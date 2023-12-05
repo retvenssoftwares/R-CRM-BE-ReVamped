@@ -1,4 +1,5 @@
 import User from "../model/User";
+import { generateRandomNumber } from "../utils/generatePassword";
 
 class UserModel {
     // static async UserLogin(req, res, next) {
@@ -65,12 +66,15 @@ class UserModel {
     //   }
     // }
 
+  
+
     static async AdminSignUp(req, res, next) {
       try {
         const email = req.body.email;
         const password = req.body.password;
         const phone_number = req.body.phone_number;
         const dob = req.body.dob;
+        const gender = req.body.gender;
         if(!email || !password || !phone_number || !dob){
             return res.status(422).json({
                 status: false,
@@ -89,12 +93,25 @@ class UserModel {
             });
         }
 
-        
+        const encryptedPassword = await bcrypt.hash(password, 10);
+
+        user = await User.create({
+            phone_number : phone_number,
+            email : email,
+            dob : dob,
+            gender : gender,
+            password: encryptedPassword,
+            otp : generateRandomNumber(),
+            expire : "TODO"
+        });
 
       } catch (error) {
         return next(new ErrorHandler(error.message, 500));
       }
     }
   }
+
+
+
   
   export default UserModel;
