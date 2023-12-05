@@ -4,4 +4,4 @@ import AdminRouter from './admin.routes.js'
  app.use("/api/admin",AdminRouter)
   }
 
-  export default initialize;  
+export default initialize;  
