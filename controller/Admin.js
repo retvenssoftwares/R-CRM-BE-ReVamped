@@ -218,10 +218,10 @@ class AdminModel {
       await sendMail({
         email: email,
         subject: "OTP For Validating Email",
-        template: "crudential-mail.ejs",
+        template: "otp-mail.ejs",
         data: {
           name: user.name ? user.name : "USER",
-          password: otp,
+          otp: otp,
         },
       });
 
@@ -330,10 +330,10 @@ class AdminModel {
       await sendMail({
         email: email,
         subject: "OTP for reset Password",
-        template: "crudential-mail.ejs",
+        template: "otp-mail.ejs",
         data: {
           name: user.name ? user.name : "USER",
-          password: otp,
+          otp: otp,
         },
       });
       const { _id, status } = user;
@@ -486,7 +486,7 @@ class AdminModel {
           //   template: 'crudential-mail.ejs',
           //   data: {
           //     name:req.body.name,
-          //     password:randomPassword
+          //     otp:randomPassword
           //   }
           // });
 
@@ -582,10 +582,10 @@ class AdminModel {
       await sendMail({
         email: user.email,
         subject: "OTP For Validating Email",
-        template: "crudential-mail.ejs",
+        template: "otp-mail.ejs",
         data: {
           name: user.name ? user.name : "USER",
-          password: otp,
+          otp: otp,
         },
       });
 
