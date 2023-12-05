@@ -12,7 +12,7 @@ let BASE_URL = process.env.BASE_URL
 class AdminModel {
     static async AddUser(req, res, next) {
       try {
-        // if (req.authData.role === "ADMIN") {
+        if (req.authData.role === "ADMIN") {
           let email = req.body.email;
           let name = req.body.name;
           let gender = req.body.gender;
@@ -55,7 +55,7 @@ class AdminModel {
               dob,
               phone_number,
               password: encryptedPassword,
-              // created_by:req.authData._id,
+              created_by:req.authData._id,
               agent_id:(findAgent.length + 1) || 1,
               agent_text:req.query.ext_name,
               role:"AGENT"
@@ -100,13 +100,13 @@ class AdminModel {
             });
   
           }
-        // } else {
-        //   return res.status(401).json({
-        //     status: false,
-        //     code: 401,
-        //     message: "Not Authorized",
-        //   });
-        // }
+        } else {
+          return res.status(401).json({
+            status: false,
+            code: 401,
+            message: "Not Authorized",
+          });
+        }
       } catch (error) {
         console.log(error)
         return res.status(500).json({
@@ -116,7 +116,6 @@ class AdminModel {
         });
       }
     }
-
   }
 
 
