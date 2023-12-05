@@ -35,7 +35,7 @@ class AdminModel {
           message: "Email did not match!!"
         });
       }
-      let validPassword = await bcrypt.compare(password, findUser.password)
+      let validPassword = await bcrypt.compare(password, findUser.password);
       if(!validPassword){
         return res.status(410).json({
           status: false,
@@ -309,7 +309,7 @@ class AdminModel {
         });
       }
 
-      let user = await User.findOne(email).lean();
+      let user = await User.findOne({email}).lean();
 
       if (!user) {
         return res.status(403).json({
@@ -320,7 +320,7 @@ class AdminModel {
       }
 
       const otp = generateRandomNumber();
-      const expires = new Date();
+      const expires = new Date(new Date().getTime() + 5 * 60 * 1000).getTime();
       user = await User.findOneAndUpdate({ email }, {
         $set: {
           otp: otp,
@@ -336,14 +336,79 @@ class AdminModel {
           password: otp,
         },
       });
-      const { _id, role, name } = user;
-      const jwtToken = await signJwt({ _id, role, name, email });
+      const { _id, status } = user;
+      const jwtToken = await signJwt({ _id, email, status });
       return res.status(200).json({
         status: true,
         code: 200,
         message: "OTP send to your mail...",
-        token: jwtToken
+        token: jwtToken.token
       });
+    } catch (error) {
+      return next(new ErrorHandler(error.message, 500));
+    }
+  }
+
+  static async VerifyOtpBeforeResetPassword(req, res, next) {
+    try {
+      const userId = req.authData._id;
+      console.log(userId);
+      const otp = req.body.otp;
+
+      if (!userId || !otp) {
+        return res.status(422).json({
+          status: false,
+          code: 422,
+          message: "Not getting details",
+        });
+      }
+
+      let user = await User.findById(userId).lean();
+
+      if (!user) {
+        return res.status(403).json({
+          status: false,
+          code: 403,
+          message: "User does not exist",
+        });
+      }
+
+      if (user.role !== 'ADMIN') {
+        return res.status(401).json({
+          status: false,
+          code: 401,
+          message: "Not Authorized",
+        });
+      }
+
+
+      const details = await User.findOne({ _id: userId, otp: otp });
+      if (details) {
+        console.log(details.expires , new Date().getTime());
+        if (details.expires > new Date().getTime()) {
+          await User.findByIdAndUpdate(userId, { $set: { otp: 0, expires: 0 } });
+          return res.status(200).json({
+            status: true,
+            code: 200,
+            message: "otp verified successfully"
+          });
+        } else {
+          return res.status(401).json({
+            status: false,
+            code: 401,
+            message: "otp is expired"
+          });
+        }
+
+      } else {
+
+        return res.status(410).json({
+          status: false,
+          code: 410,
+          message: "OTP Does Not Match"
+        });
+
+      }
     } catch (error) {
       return next(new ErrorHandler(error.message, 500));
     }
@@ -353,22 +418,34 @@ class AdminModel {
     try {
       const email = req.authData.email;
       const userId = req.authData._id;
-      const role = req.authData.role;
-      const name = req.authData.name;
+      const password = req.body.password;
+      let user = await User.findById(userId).lean();
 
-      if (role === 'AGENT') {
+      if (!user) {
+        return res.status(403).json({
+          status: false,
+          code: 403,
+          message: "User does not exist",
+        });
+      }
+      if (user.role === 'AGENT') {
         return res.status(401).json({
           status: true,
           code: 401,
           message: "You are not authorized"
         });
       }
+      const encryptedPassword = await bcrypt.hash(password, 10);
+      user = await User.findByIdAndUpdate(userId, {
+        $set : {
+          password : encryptedPassword
+        }
+      })
 
       return res.status(200).json({
         status: true,
         code: 200,
-        message: "OTP send to your mail...",
-        token: jwtToken
+        message: "Password Updated Successfully...",
       });
     } catch (error) {
       return next(new ErrorHandler(error.message, 500));
