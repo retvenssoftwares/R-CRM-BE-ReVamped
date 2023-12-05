@@ -16,7 +16,21 @@ class AdminModel {
 
   static async loginAdmin(req, res, next) {
     try {
-      
+
+      const { email, password } = req.body;
+
+      if (!email && !password) {
+        return res.status(422).json({
+          status: false,
+          code: 422,
+          message: "Please fill all the required field",
+        });
+      }
+
+      let findUser = await User.findOne({ email }).lean();
+
+      // if(findUser )
+
     } catch (error) {
       return next(new ErrorHandler(error.message, 500));
     }
