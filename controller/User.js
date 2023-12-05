@@ -1,5 +1,6 @@
 import User from "../model/User";
 import { generateRandomNumber } from "../utils/generatePassword";
+import { bcrypt } from 'bcryptjs';
 
 class UserModel {
     // static async UserLogin(req, res, next) {
