@@ -1,11 +1,11 @@
 import User from "../model/User.js";
-import { generateRandomNumber } from "../utils/generatePassword";
-import { bcrypt } from 'bcryptjs';
+import { generateRandomNumber } from "../utils/generatePassword.js";
+import bcrypt from 'bcryptjs';
 import { signJwt } from "../middleware/auth.js";
 import { sendMail } from "../utils/sendMail.js";
 import ErrorHandler from "../utils/errorHandler.js";
 
-class UserModel {
+class AdminModel {
     // static async UserLogin(req, res, next) {
     //   try {
     //     let email = req.body.email;
@@ -79,6 +79,7 @@ class UserModel {
             const phone_number = req.body.phone_number;
             const dob = req.body.dob;
             const gender = req.body.gender;
+
             if (!email || !password || !phone_number || !dob) {
                 return res.status(422).json({
                     status: false,
@@ -87,7 +88,7 @@ class UserModel {
                 });
             }
 
-            let user = await User.findOne(email).lean();
+            let user = await User.findOne({ email }).lean();
 
             if (user) {
                 return res.status(403).json({
@@ -96,18 +97,20 @@ class UserModel {
                     message: "Email already exist",
                 });
             }
-
+            const expires = new Date(new Date().getTime() + 5 * 60 * 1000).getTime();
             const encryptedPassword = await bcrypt.hash(password, 10);
-
+            const otp = generateRandomNumber();
             user = await User.create({
                 phone_number: phone_number,
                 email: email,
                 dob: dob,
                 gender: gender,
                 password: encryptedPassword,
-                otp: generateRandomNumber(),
-                expire: new Date()
+                otp: otp,
+                expires: expires
             });
+            const { _id } = user;
+            const jwtToken = await signJwt({ _id, email });
 
             await sendMail({
                 email: email,
@@ -122,8 +125,70 @@ class UserModel {
             return res.status(200).json({
                 status: true,
                 code: 200,
-                message: "OTP send to your mail..."
+                message: "OTP send to your mail...",
+                token: jwtToken.token
             });
+
+        } catch (error) {
+            return next(new ErrorHandler(error.message, 500));
+        }
+    }
+
+    static async VarifiedEmail(req, res, next) {
+        try {
+            const userId = req.authData._id;
+            const otp = req.body.otp;
+
+            if (!userId || !otp) {
+                return res.status(422).json({
+                    status: false,
+                    code: 422,
+                    message: "Not getting details",
+                });
+            }
+
+            let user = await User.findById(userId).lean();
+
+            if (!user) {
+                return res.status(403).json({
+                    status: false,
+                    code: 403,
+                    message: "User does not exist",
+                });
+            }
+
+            const details = await User.findOne({ _id: userId, otp: otp });
+
+            if (details) {
+                if (details.expires > new Date().getTime()) {
+
+                    await User.findByIdAndUpdate(userId, { $set: { otp: 0, expires: 0, is_email_Verified: true } });
+
+                    return res.status(200).json({
+                        status: true,
+                        code: 200,
+                        message: "email verified successfully"
+                    });
+                } else {
+                    return res.status(401).json({
+                        status: false,
+                        code: 401,
+                        message: "otp is expired"
+                    });
+                }
+
+            } else {
+
+                return res.status(410).json({
+                    status: false,
+                    code: 410,
+                    message: "OTP Does Not Match"
+                });
+
+            }
+
+
+
 
         } catch (error) {
             return next(new ErrorHandler(error.message, 500));
@@ -211,4 +276,4 @@ class UserModel {
 
 
 
-export default UserModel;
+export default AdminModel;

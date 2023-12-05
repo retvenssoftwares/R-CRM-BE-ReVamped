@@ -1,6 +1,7 @@
 import JWT from 'jsonwebtoken';
 // import User from '../model/User.js'
 import ErrorHandler from '../utils/errorHandler.js'
+import User from '../model/User.js';
 
 async function signJwt(payloadData) {
   const jwtPayload = payloadData;
@@ -17,7 +18,6 @@ async function signJwt(payloadData) {
 
 async function verifyJwt(req, res, next) {
   const { authorization } = req.headers;
-
   try {
     if (!authorization) {
       return res.status(401).json({
@@ -27,7 +27,6 @@ async function verifyJwt(req, res, next) {
       });
     } else if (authorization) {
       const verifyValidToken = JWT.decode(authorization);
-
       if (!verifyValidToken) {
         return res
           .status(401)
@@ -40,7 +39,6 @@ async function verifyJwt(req, res, next) {
             ignoreExpiration: true,
           }
         );
-
         const findUserWithAuth = await User.findOne({
           email: decoded.email,
         }).lean();
@@ -51,7 +49,7 @@ async function verifyJwt(req, res, next) {
           return res
             .status(401)
             .json({ status: false, code: 401, message: "Not Authorized" });
-        } else if (decoded.is_active && decoded.is_active === 0) {
+        } else if (decoded.status && decoded.status === true) {
           return res
             .status(401)
             .json({ status: false, code: 401, message: "Not Authorized" });
