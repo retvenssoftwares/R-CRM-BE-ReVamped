@@ -13,6 +13,15 @@ dotenv.config({ path: "./.env" });
 let BASE_URL = process.env.BASE_URL
 
 class AdminModel {
+
+  static async loginAdmin(req, res, next) {
+    try {
+      
+    } catch (error) {
+      return next(new ErrorHandler(error.message, 500));
+    }
+  }
+
   static async AddUser(req, res, next) {
     try {
       // if (req.authData.role === "ADMIN") {
