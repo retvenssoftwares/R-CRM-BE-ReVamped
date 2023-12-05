@@ -44,7 +44,9 @@ const userSchema = new Schema(
     is_email_Verified : { type: Boolean, default: false},
     created_by:{type:mongoose.Types.ObjectId,enum:["ADMIN"]},
     agent_id:{type:Number},
-    agentext:{type:Number}
+    agentext:{type:Number},
+  
+
   },
   { versionKey: false, timestamp : true }
 );
