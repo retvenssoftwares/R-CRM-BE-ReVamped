@@ -5,7 +5,6 @@ import dotenv from "dotenv";
 dotenv.config({ path: "./.env" });
 
 const db_uri = process.env.DB_URI || "";
-console.log(db_uri,"dbdbdbdbdbdbdbdbbdbd")
 
 const connectDB = async () => {
   try {
