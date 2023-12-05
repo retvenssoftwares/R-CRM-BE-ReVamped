@@ -3,7 +3,10 @@ import { generateRandomNumber } from "../utils/generatePassword.js";
 import { randomString } from '../middleware/custom.js'
 import bcrypt from 'bcryptjs';
 import dotenv from "dotenv";
-import axios from 'axios'
+import axios from 'axios';
+import { signJwt } from "../middleware/auth.js";
+import { sendMail } from "../utils/sendMail.js";
+import ErrorHandler from "../utils/errorHandler.js";
 
 dotenv.config({ path: "./.env" });
 

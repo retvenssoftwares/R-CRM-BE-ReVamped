@@ -271,6 +271,54 @@ class AdminModel {
             return next(new ErrorHandler(error.message, 500));
         }
     }
+
+    static async resendOTP(req, res, next) {
+        try {
+            const userId = req.authData._id;
+            if (!userId) {
+                return res.status(402).json({
+                    status: false,
+                    code: 402,
+                    message: "Something went wrong!!",
+                });
+            }
+            const expires = new Date(new Date().getTime() + 5 * 60 * 1000).getTime();
+            const otp = generateRandomNumber();
+            let user = await User.findByIdAndUpdate(userId, {
+                $set: {
+                    otp,
+                    expires
+                }
+            }).lean();
+
+            await sendMail({
+                email: user.email,
+                subject: "OTP For Validating Email",
+                template: "crudential-mail.ejs",
+                data: {
+                  name: user.name ? user.name : "USER",
+                  password: otp,
+                },
+              });
+
+            if (!user) {
+                return res.status(402).json({
+                    status: false,
+                    code: 402,
+                    message: "Something went wrong!!",
+                });
+            }
+
+            return res.status(200).json({
+                status: true,
+                code: 200,
+                message: "otp is send to your email successfully",
+            });
+
+        } catch (error) {
+            return next(new ErrorHandler(error.message, 500));
+        }
+    }
 }
 
 

@@ -1,5 +1,6 @@
 import express from 'express'
 import AdminModel from '../controller/Admin.js';
+import AdminModel1 from '../controller/Admin1.js';
 import {verifyJwt} from '../middleware/auth.js'
 const router = express.Router();
 
@@ -7,6 +8,7 @@ const router = express.Router();
 router.post('/signup', AdminModel.AdminSignUp);
 
 router.post('/validate-email',verifyJwt, AdminModel.VarifiedEmail);
+router.post('/resend-otp',verifyJwt, AdminModel1.resendOTP);
 
 
 
