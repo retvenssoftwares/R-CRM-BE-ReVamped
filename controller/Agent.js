@@ -33,9 +33,6 @@ class AgentModel {
 
         const {agentId, agentext} = findAgent
 
-
-
-
     }
 
 }
