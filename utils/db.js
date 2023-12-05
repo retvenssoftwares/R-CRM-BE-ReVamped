@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 import dotenv from "dotenv";
-// import {seedAdmin} from './seeder.js'
+import {seedAdmin} from './seeder.js'
 
 dotenv.config({ path: "./.env" });
 
@@ -10,7 +10,7 @@ const connectDB = async () => {
   try {
     await mongoose.connect(db_uri).then((data) => {
       console.log(`Database connected successfully`);
-      // seedAdmin();
+      seedAdmin();
     });
   } catch (error) {
     console.log(error.message);
