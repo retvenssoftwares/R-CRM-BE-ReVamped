@@ -10,7 +10,7 @@ const userSchema = new Schema(
     gender : { type : String , enum : ['MALE', 'FEMALE','OTHER'] },
     dob : { type: String },
     password: { type: String, required: true},
-    role : { type : String , enum : ['ADMIN', 'AGENT', 'SUPER_ADMIN', 'GUEST'] },
+    role : { type : String , enum : ['ADMIN', 'AGENT', 'SUPER_ADMIN'] },
     status : { type : String , enum : ['ACTIVE', 'INACTIVE'] },
     is_verified : { type: Boolean, default: false },
     otp : { type: Number },
@@ -19,13 +19,7 @@ const userSchema = new Schema(
     created_by:{type:mongoose.Types.ObjectId,enum:["ADMIN"]},
     agent_id:{type:Number},
     agentext:{type:Number},
-    address_1:{type:String},
-    address_2:{type:String},
-    city : {type:String},
-    state : {type:String},
-    country : {type:String},
-    zip_code : {type:String},
-    location:{type:String},
+  
 
   },
   { versionKey: false, timestamp : true }
