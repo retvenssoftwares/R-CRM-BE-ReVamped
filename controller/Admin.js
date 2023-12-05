@@ -18,6 +18,7 @@ class AdminModel {
     try {
 
       const { email, password } = req.body;
+      console.log(password);
 
       if (!email && !password) {
         return res.status(422).json({
@@ -26,10 +27,42 @@ class AdminModel {
           message: "Please fill all the required field",
         });
       }
-
       let findUser = await User.findOne({ email }).lean();
+      if(!findUser){
+        return res.status(410).json({
+          status: false,
+          code: 410,
+          message: "Email did not match!!"
+        });
+      }
+      let validPassword = await bcrypt.compare(password, findUser.password)
+      if(!validPassword){
+        return res.status(410).json({
+          status: false,
+          code: 410,
+          message: "Password did not match!!"
+        });
+      }
 
-      // if(findUser )
+      // TODO : 
+
+      // if(findUser.is_verified === false ||  findUser.is_email_Verified === false || findUser.status === "INACTIVE" || findUser.role !== "ADMIN"){
+      //   return res.status(401).json({
+      //     status: false,
+      //     code: 401,
+      //     message: "You are not allowed to login",
+      //   });
+      // }
+
+      const { _id, role } = findUser;
+      const jwtToken = await signJwt({ _id, email, role });
+
+      return res.status(200).json({
+        status: true,
+        code: 200,
+        message: "Login Successfully",
+        token: jwtToken.token
+      });
 
     } catch (error) {
       return next(new ErrorHandler(error.message, 500));
@@ -351,10 +384,10 @@ class AdminModel {
         let dob = req.body.dob
         let phone_number = req.body.phone_number
         let password = req.body.password
-  
+
         let findOldUser = await User.findOne({ email }).lean();
-        let findAgent = await User.find({role:"AGENT"}).lean()
-  
+        let findAgent = await User.find({ role: "AGENT" }).lean()
+
         if (findOldUser) {
           return res.status(409).json({
             success: false,
@@ -367,9 +400,9 @@ class AdminModel {
             "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
           );
           const encryptedPassword = await bcrypt.hash(randomPassword, 10);
-  
+
           // let __dirname = path.resolve();
-  
+
           // await sendMail({
           //   email: email,
           //   subject: 'Login Credential of your account',
@@ -379,7 +412,7 @@ class AdminModel {
           //     password:randomPassword
           //   }
           // });
-  
+
           let newUser = await User.create({
             email,
             name,
@@ -387,18 +420,18 @@ class AdminModel {
             dob,
             phone_number,
             password: encryptedPassword,
-            created_by:req.authData._id,
-            agent_id:(findAgent.length + 1) || 1,
-            agent_text:req.query.ext_name,
-            role:"AGENT"
+            created_by: req.authData._id,
+            agent_id: (findAgent.length + 1) || 1,
+            agent_text: req.query.ext_name,
+            role: "AGENT"
           });
-        
-          
+
+
           const data = {
-            agent_id:(findAgent.length + 1) || 1,
-            agent_text:req.query.ext_name
+            agent_id: (findAgent.length + 1) || 1,
+            agent_text: req.query.ext_name
           };
-      
+
           const options = {
             method: 'POST',
             url: BASE_URL + '/createagent',
@@ -415,7 +448,7 @@ class AdminModel {
               .request(options)
               .then(function (response1) {
                 resolve(response1.data);
-      
+
                 return response;
               })
               .catch(function (error) {
@@ -424,13 +457,13 @@ class AdminModel {
               });
           });
           response = new Response(200, 'T', apiResponse);
-  
+
           return res.status(200).json({
             success: true,
             code: 200,
             message: `User Created`,
           });
-  
+
         }
       } else {
         return res.status(401).json({
@@ -452,51 +485,51 @@ class AdminModel {
 
   static async resendOTP(req, res, next) {
     try {
-        const userId = req.authData._id;
-        if (!userId) {
-            return res.status(402).json({
-                status: false,
-                code: 402,
-                message: "Something went wrong!!",
-            });
-        }
-        const expires = new Date(new Date().getTime() + 5 * 60 * 1000).getTime();
-        const otp = generateRandomNumber();
-        let user = await User.findByIdAndUpdate(userId, {
-            $set: {
-                otp,
-                expires
-            }
-        }).lean();
-
-        await sendMail({
-            email: user.email,
-            subject: "OTP For Validating Email",
-            template: "crudential-mail.ejs",
-            data: {
-              name: user.name ? user.name : "USER",
-              password: otp,
-            },
-          });
-
-        if (!user) {
-            return res.status(402).json({
-                status: false,
-                code: 402,
-                message: "Something went wrong!!",
-            });
-        }
-
-        return res.status(200).json({
-            status: true,
-            code: 200,
-            message: "otp is send to your email successfully",
+      const userId = req.authData._id;
+      if (!userId) {
+        return res.status(402).json({
+          status: false,
+          code: 402,
+          message: "Something went wrong!!",
         });
+      }
+      const expires = new Date(new Date().getTime() + 5 * 60 * 1000).getTime();
+      const otp = generateRandomNumber();
+      let user = await User.findByIdAndUpdate(userId, {
+        $set: {
+          otp,
+          expires
+        }
+      }).lean();
+
+      await sendMail({
+        email: user.email,
+        subject: "OTP For Validating Email",
+        template: "crudential-mail.ejs",
+        data: {
+          name: user.name ? user.name : "USER",
+          password: otp,
+        },
+      });
+
+      if (!user) {
+        return res.status(402).json({
+          status: false,
+          code: 402,
+          message: "Something went wrong!!",
+        });
+      }
+
+      return res.status(200).json({
+        status: true,
+        code: 200,
+        message: "otp is send to your email successfully",
+      });
 
     } catch (error) {
-        return next(new ErrorHandler(error.message, 500));
+      return next(new ErrorHandler(error.message, 500));
     }
-}
+  }
 
 }
 

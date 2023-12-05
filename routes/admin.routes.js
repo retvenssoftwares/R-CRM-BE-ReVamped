@@ -9,7 +9,7 @@ router.post('/signup', AdminModel.AdminSignUp);
 router.post('/validate-email',verifyJwt, AdminModel.VarifiedEmail);
 router.post('/resend-otp',verifyJwt, AdminModel.resendOTP);
 
-
+router.post('/login', AdminModel.loginAdmin);
 
 router.post('/create_user', AdminModel.AddUser);
 
