@@ -1,9 +1,9 @@
 import User from "../model/User.js";
 import { generateRandomNumber } from "../utils/generatePassword.js";
-import { randomString } from '../middleware/custom.js'
-import bcrypt from 'bcryptjs';
+import { randomString } from "../middleware/custom.js";
+import bcrypt from "bcryptjs";
 import dotenv from "dotenv";
-import axios from 'axios';
+import axios from "axios";
 import { signJwt } from "../middleware/auth.js";
 import { sendMail } from "../utils/sendMail.js";
 import ErrorHandler from "../utils/errorHandler.js";
@@ -11,15 +11,12 @@ import callDetail from "../model/callDetails.js"
 
 dotenv.config({ path: "./.env" });
 
-let BASE_URL = process.env.BASE_URL
+let BASE_URL = process.env.BASE_URL;
 
 class AdminModel {
-
   static async loginAdmin(req, res, next) {
     try {
-
-      const { email, password } = req.body;
-      console.log(password);
+      let { email, password } = req.body;
 
       if (!email && !password) {
         return res.status(422).json({
@@ -29,42 +26,80 @@ class AdminModel {
         });
       }
       let findUser = await User.findOne({ email }).lean();
-      if(!findUser){
+      console.log(findUser, "findUserfindUserfindUserfindUser");
+      if (!findUser) {
         return res.status(410).json({
           status: false,
           code: 410,
-          message: "Email did not match!!"
+          message: "Email did not match!!",
         });
       }
       let validPassword = await bcrypt.compare(password, findUser.password);
-      if(!validPassword){
+      if (!validPassword) {
         return res.status(410).json({
           status: false,
           code: 410,
-          message: "Password did not match!!"
+          message: "Password did not match!!",
         });
       }
 
-      // TODO : 
+      if (
+        findUser.is_verified === false ||
+        findUser.is_email_Verified === false ||
+        findUser.status === "INACTIVE"
+      ) {
+        return res.status(401).json({
+          status: false,
+          code: 401,
+          message: "You are not allowed to login",
+        });
+      }
 
-      // if(findUser.is_verified === false ||  findUser.is_email_Verified === false || findUser.status === "INACTIVE" || findUser.role !== "ADMIN"){
-      //   return res.status(401).json({
-      //     status: false,
-      //     code: 401,
-      //     message: "You are not allowed to login",
+      // pending for coral api
+
+      // if (findUser.role === "AGENT") {
+      //   const data = {
+      //     agent_id: findAgent.length + 1 || 1,
+      //     agent_text: req.query.ext_name,
+      //   };
+
+      //   const options = {
+      //     method: "POST",
+      //     url: BASE_URL + "/agentlogin",
+      //     headers: {
+      //       accept: "application/json",
+      //       "content-type": "application/json",
+      //       Authorization: process.env.API_KEY,
+      //     },
+      //     data: data,
+      //   };
+      //   const apiResponse = await new Promise(async (resolve, reject) => {
+      //     axios
+      //       .request(options)
+      //       .then(function (response1) {
+      //         resolve(response1.data);
+      //         return response;
+      //       })
+      //       .catch(function (error) {
+      //         reject(error);
+      //         return response;
+      //       });
       //   });
       // }
+      // TODO :
 
-      const { _id, role } = findUser;
-      const jwtToken = await signJwt({ _id, email, role });
+      const _id = findUser._id;
+      const role = findUser.role;
+      const name = findUser.name;
+
+      const jwtToken = await signJwt({ _id, role, name, email });
 
       return res.status(200).json({
         status: true,
         code: 200,
         message: "Login Successfully",
-        token: jwtToken.token
+        data: jwtToken,
       });
-
     } catch (error) {
       return next(new ErrorHandler(error.message, 500));
     }
@@ -73,93 +108,75 @@ class AdminModel {
   static async AddUser(req, res, next) {
     try {
       if (req.authData.role === "ADMIN") {
-      let email = req.body.email;
-      let name = req.body.name;
-      let gender = req.body.gender;
-      let dob = req.body.dob
-      let phone_number = req.body.phone_number
-      let password = req.body.password
+        let email = req.body.email;
+        let name = req.body.name;
+        let gender = req.body.gender;
+        let dob = req.body.dob;
+        let phone_number = req.body.phone_number;
+        let password = req.body.password;
 
-      let findOldUser = await User.findOne({ email }).lean();
-      let findAgent = await User.find({ role: "AGENT" }).lean()
+        let findOldUser = await User.findOne({ email }).lean();
+        let findAgent = await User.find({ role: "AGENT" }).lean();
 
-      if (findOldUser) {
-        return res.status(409).json({
-          success: false,
-          code: 409,
-          message: "User already exists",
-        });
-      } else {
-        const randomPassword = await randomString(
-          8,
-          "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
-        );
-        const encryptedPassword = await bcrypt.hash(randomPassword, 10);
+        if (findOldUser) {
+          return res.status(409).json({
+            success: false,
+            code: 409,
+            message: "User already exists",
+          });
+        } else {
+          const encryptedPassword = await bcrypt.hash(password, 10);
 
-        // let __dirname = path.resolve();
+          let newUser = await User.create({
+            email,
+            name,
+            gender,
+            dob,
+            phone_number,
+            is_verified: true,
+            is_email_Verified: true,
+            password: encryptedPassword,
+            created_by: req.authData._id,
+            // agent_id: (findAgent.length + 1) || 1,
+            // agent_text: req.query.ext_name,
+            role: "AGENT",
+          });
 
-        // await sendMail({
-        //   email: email,
-        //   subject: 'Login Credential of your account',
-        //   template: 'crudential-mail.ejs',
-        //   data: {
-        //     name:req.body.name,
-        //     password:randomPassword
-        //   }
-        // });
+          // const data = {
+          //   agent_id: (findAgent.length + 1) || 1,
+          //   agent_text: req.query.ext_name
+          // };
 
-        let newUser = await User.create({
-          email,
-          name,
-          gender,
-          dob,
-          phone_number,
-          password: encryptedPassword,
-          created_by:req.authData._id,
-          agent_id: (findAgent.length + 1) || 1,
-          agent_text: req.query.ext_name,
-          role: "AGENT"
-        });
+          // const options = {
+          //   method: 'POST',
+          //   url: BASE_URL + '/createagent',
+          //   headers: {
+          //     accept: 'application/json',
+          //     'content-type': 'application/json',
+          //     'Authorization': process.env.API_KEY,
+          //   },
+          //   data: data,
+          // };
+          // const apiResponse = await new Promise(async (resolve, reject) => {
+          //   axios
+          //     .request(options)
+          //     .then(function (response1) {
+          //       resolve(response1.data);
 
+          //       return response;
+          //     })
+          //     .catch(function (error) {
+          //       reject(error);
+          //       return response;
+          //     });
+          // });
 
-        const data = {
-          agent_id: (findAgent.length + 1) || 1,
-          agent_text: req.query.ext_name
-        };
-
-        const options = {
-          method: 'POST',
-          url: BASE_URL + '/createagent',
-          headers: {
-            accept: 'application/json',
-            'x-api-version': '2022-09-01',
-            'content-type': 'application/json',
-            'Authorization': process.env.API_KEY,
-          },
-          data: data,
-        };
-        const apiResponse = await new Promise(async (resolve, reject) => {
-          axios
-            .request(options)
-            .then(function (response1) {
-              resolve(response1.data);
-
-              return response;
-            })
-            .catch(function (error) {
-              reject(error);
-              return response;
-            });
-        });
-
-        
-        return res.status(200).json({
-          success: true,
-          code: 200,
-          message: `User Created`,
-        });
-
-      }
+          return res.status(200).json({
+            success: true,
+            code: 200,
+            message: `Agent added....`,
+          });
+        }
       } else {
         return res.status(401).json({
           status: false,
@@ -168,7 +185,7 @@ class AdminModel {
         });
       }
     } catch (error) {
-      console.log(error)
+      console.log(error);
       return res.status(500).json({
         status: false,
         code: 500,
@@ -212,7 +229,8 @@ class AdminModel {
         gender: gender,
         password: encryptedPassword,
         otp: otp,
-        expires: expires
+        expires: expires,
+        is_verified: true, // This is on hold after that superAdmin will verify Admin
       });
       const { _id } = user;
       const jwtToken = await signJwt({ _id, email });
@@ -231,9 +249,8 @@ class AdminModel {
         status: true,
         code: 200,
         message: "OTP send to your mail...",
-        token: jwtToken.token
+        token: jwtToken.token,
       });
-
     } catch (error) {
       return next(new ErrorHandler(error.message, 500));
     }
@@ -266,35 +283,29 @@ class AdminModel {
 
       if (details) {
         if (details.expires > new Date().getTime()) {
-
-          await User.findByIdAndUpdate(userId, { $set: { otp: 0, expires: 0, is_email_Verified: true } });
+          await User.findByIdAndUpdate(userId, {
+            $set: { otp: 0, expires: 0, is_email_Verified: true },
+          });
 
           return res.status(200).json({
             status: true,
             code: 200,
-            message: "email verified successfully"
+            message: "email verified successfully",
           });
         } else {
           return res.status(401).json({
             status: false,
             code: 401,
-            message: "otp is expired"
+            message: "otp is expired",
           });
         }
-
       } else {
-
         return res.status(410).json({
           status: false,
           code: 410,
-          message: "OTP Does Not Match"
+          message: "OTP Does Not Match",
         });
-
       }
-
-
-
-
     } catch (error) {
       return next(new ErrorHandler(error.message, 500));
     }
@@ -311,7 +322,7 @@ class AdminModel {
         });
       }
 
-      let user = await User.findOne({email}).lean();
+      let user = await User.findOne({ email }).lean();
 
       if (!user) {
         return res.status(403).json({
@@ -323,12 +334,15 @@ class AdminModel {
 
       const otp = generateRandomNumber();
       const expires = new Date(new Date().getTime() + 5 * 60 * 1000).getTime();
-      user = await User.findOneAndUpdate({ email }, {
-        $set: {
-          otp: otp,
-          expires: expires
+      user = await User.findOneAndUpdate(
+        { email },
+        {
+          $set: {
+            otp: otp,
+            expires: expires,
+          },
         }
-      }).lean();
+      ).lean();
       await sendMail({
         email: email,
         subject: "OTP for reset Password",
@@ -338,13 +352,12 @@ class AdminModel {
           otp: otp,
         },
       });
-      const { _id, status } = user;
-      const jwtToken = await signJwt({ _id, email, status });
+
       return res.status(200).json({
         status: true,
         code: 200,
         message: "OTP send to your mail...",
-        token: jwtToken.token
+        data: { _id: user._id },
       });
     } catch (error) {
       return next(new ErrorHandler(error.message, 500));
@@ -353,8 +366,7 @@ class AdminModel {
 
   static async VerifyOtpBeforeResetPassword(req, res, next) {
     try {
-      const userId = req.authData._id;
-      console.log(userId);
+      const userId = req.body._id;
       const otp = req.body.otp;
 
       if (!userId || !otp) {
@@ -375,7 +387,7 @@ class AdminModel {
         });
       }
 
-      if (user.role !== 'ADMIN') {
+      if (user.role !== "ADMIN") {
         return res.status(401).json({
           status: false,
           code: 401,
@@ -383,33 +395,33 @@ class AdminModel {
         });
       }
 
-
       const details = await User.findOne({ _id: userId, otp: otp });
       if (details) {
-        console.log(details.expires , new Date().getTime());
         if (details.expires > new Date().getTime()) {
-          await User.findByIdAndUpdate(userId, { $set: { otp: 0, expires: 0 } });
+          await User.findByIdAndUpdate(userId, {
+            $set: { otp: 0, expires: 0 },
+          });
+
+          const jwtToken = await signJwt({ _id:user._id, email:user.email, role:user.role });
           return res.status(200).json({
             status: true,
             code: 200,
-            message: "otp verified successfully"
+            message: "otp verified successfully",
+            data: {token:jwtToken},
           });
         } else {
           return res.status(401).json({
             status: false,
             code: 401,
-            message: "otp is expired"
+            message: "otp is expired",
           });
         }
-
       } else {
-
         return res.status(410).json({
           status: false,
           code: 410,
-          message: "OTP Does Not Match"
+          message: "OTP Does Not Match",
         });
-
       }
     } catch (error) {
       return next(new ErrorHandler(error.message, 500));
@@ -430,19 +442,19 @@ class AdminModel {
           message: "User does not exist",
         });
       }
-      if (user.role === 'AGENT') {
+      if (user.role === "AGENT") {
         return res.status(401).json({
           status: true,
           code: 401,
-          message: "You are not authorized"
+          message: "You are not authorized",
         });
       }
       const encryptedPassword = await bcrypt.hash(password, 10);
       user = await User.findByIdAndUpdate(userId, {
-        $set : {
-          password : encryptedPassword
-        }
-      })
+        $set: {
+          password: encryptedPassword,
+        },
+      });
 
       return res.status(200).json({
         status: true,
@@ -453,7 +465,6 @@ class AdminModel {
       return next(new ErrorHandler(error.message, 500));
     }
   }
-
 
   static async resendOTP(req, res, next) {
     try {
@@ -470,8 +481,8 @@ class AdminModel {
       let user = await User.findByIdAndUpdate(userId, {
         $set: {
           otp,
-          expires
-        }
+          expires,
+        },
       }).lean();
 
       await sendMail({
@@ -497,7 +508,6 @@ class AdminModel {
         code: 200,
         message: "otp is send to your email successfully",
       });
-
     } catch (error) {
       return next(new ErrorHandler(error.message, 500));
     }
@@ -515,9 +525,90 @@ class AdminModel {
 }
 
 
+  static async verificationAdmin(req, res, next) {
+    try {
+      const { email, password } = req.body;
+
+      if (!email && !password) {
+        return res.status(422).json({
+          status: false,
+          code: 422,
+          message: "Please fill all the required field",
+        });
+      }
+      let findUser = await User.findOne({ email }).lean();
+      if (!findUser) {
+        return res.status(410).json({
+          status: false,
+          code: 410,
+          message: "Email did not match!!",
+        });
+      }
+      let validPassword = await bcrypt.compare(password, findUser.password);
+      if (!validPassword) {
+        return res.status(410).json({
+          status: false,
+          code: 410,
+          message: "Password did not match!!",
+        });
+      }
+
+      if (
+        findUser.is_verified === false ||
+        findUser.is_email_Verified === false ||
+        findUser.status === "INACTIVE"
+      ) {
+        return res.status(401).json({
+          status: false,
+          code: 401,
+          message: "You are not allowed to login",
+        });
+      }
+
+      if (findUser.role === "AGENT") {
+        const data = {
+          agent_id: findAgent.length + 1 || 1,
+          agent_text: req.query.ext_name,
+        };
+
+        const options = {
+          method: "POST",
+          url: BASE_URL + "/agentlogin",
+          headers: {
+            accept: "application/json",
+            "content-type": "application/json",
+            Authorization: process.env.API_KEY,
+          },
+          data: data,
+        };
+        const apiResponse = await new Promise(async (resolve, reject) => {
+          axios
+            .request(options)
+            .then(function (response1) {
+              resolve(response1.data);
+              return response;
+            })
+            .catch(function (error) {
+              reject(error);
+              return response;
+            });
+        });
+      }
+      // TODO :
+
+      const { _id, role } = findUser;
+      const jwtToken = await signJwt({ _id, email, role });
+
+      return res.status(200).json({
+        status: true,
+        code: 200,
+        message: "Login Successfully",
+        token: jwtToken.token,
+      });
+    } catch (error) {
+      return next(new ErrorHandler(error.message, 500));
+    }
+  }
 }
-
-
-
 
 export default AdminModel;
