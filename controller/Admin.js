@@ -11,6 +11,7 @@ import callDetail from "../model/callDetails.js";
 import login_logout from "../model/LoginAndLogOut.js"
 import CallDetail from "../model/callDetails.js"
 import mongoose from "mongoose";
+import dispositions from "../model/Disposition.js"
 
 dotenv.config({ path: "./.env" });
 
@@ -845,6 +846,28 @@ class AdminModel {
     } catch (error) {
       return next(new ErrorHandler(error.message, 500));
     }
+  }
+
+
+  static async getDisposition(req, res, next){
+    let findDisposition = await dispositions.find({})
+
+    if(!findDisposition){
+      return res.status(401).json({
+        status: false,
+        code: 401,
+        message: "Data not found",
+        data: result.reverse()
+      });
+    }
+
+    return res.status(200).json({
+      status: true,
+      code: 200,
+      message: "Data Fetched successfully",
+      data: findDisposition
+    });
+
   }
 }
 

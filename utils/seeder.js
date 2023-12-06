@@ -47,7 +47,6 @@ export async function seedDisposition() {
           const seeding = await Disposition.create({
             name: elem.name,
           });
-
           return seeding;
         }
       })
