@@ -104,14 +104,16 @@ class AdminModel {
       const log_in_time = new Date()
 
       await login_logout.updateOne(
-        { email: email },
+        { agent_id: findUser._id },
         {
           $push: {
-            "log_in_log_out_time.$[element].log_in_time": {
-              ...log_in_time, // Spread the properties of the log_out_time object
-            }
-          },
+            log_in_log_out_time: {
+              $each: [{ log_in_time: log_in_time }],
+              $position: 0,
+            },
+          },  
         },
+        {upsert:true}
       );
 
 
@@ -158,14 +160,16 @@ class AdminModel {
 
 
     await login_logout.updateOne(
-      { email: email },
+      { agent_id: findUser._id },
       {
         $push: {
-          "log_in_log_out_time.$[element].log_out_time": {
-            ...log_out_time, // Spread the properties of the log_out_time object
-          }
-        },
+          log_in_log_out_time: {
+            $each: [{ log_in_time: log_out_time }],
+            $position: 0,
+          },
+        },  
       },
+      {upsert:true}
     );
     
 
