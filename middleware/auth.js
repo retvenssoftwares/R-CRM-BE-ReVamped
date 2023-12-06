@@ -18,6 +18,7 @@ async function signJwt(payloadData) {
 
 async function verifyJwt(req, res, next) {
   const { authorization } = req.headers;
+  
   try {
     if (!authorization) {
       return res.status(401).json({
@@ -39,9 +40,12 @@ async function verifyJwt(req, res, next) {
             ignoreExpiration: true,
           }
         );
+       
         const findUserWithAuth = await User.findOne({
           email: decoded.email,
         }).lean();
+
+       
 
         const todayDate = new Date().getTime();
 
@@ -66,8 +70,8 @@ async function verifyJwt(req, res, next) {
   } catch (error) {
     if (error.message === "invalid signature") {
       return res
-        .status(401)
-        .json(json({ status: false, code: 401, message: "Not Authorized" }));
+      .status(401)
+      .json({ status: false, code: 401, message: "Not Authorized" });
     } else {
       return next(new ErrorHandler(error.message, 500));
     }
