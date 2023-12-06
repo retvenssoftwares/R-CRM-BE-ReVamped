@@ -17,4 +17,10 @@ router.post('/create_user', AdminModel.AddUser);
 router.get('/get_call',AdminModel.getAvgCallTime)
 router.post('/create_user',verifyJwt, AdminModel.AddUser);
 
+
+
+
+// DashBoard
+router.get('/stats-card', AdminModel.getAvgCallTime);
+
 export default router
