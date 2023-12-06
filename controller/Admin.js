@@ -7,6 +7,7 @@ import axios from 'axios';
 import { signJwt } from "../middleware/auth.js";
 import { sendMail } from "../utils/sendMail.js";
 import ErrorHandler from "../utils/errorHandler.js";
+import callDetail from "../model/callDetails.js"
 
 dotenv.config({ path: "./.env" });
 
@@ -501,6 +502,18 @@ class AdminModel {
       return next(new ErrorHandler(error.message, 500));
     }
   }
+
+  static async getAvgCallTime (req,res,next){
+
+    try{
+      
+      let findCall = await callDetail.find({})
+
+    }catch{
+
+    }
+}
+
 
 }
 

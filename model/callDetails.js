@@ -4,7 +4,7 @@ const { Schema, model } = mongoose;
 
 const call = new mongoose.Schema({
     guest_id: { type: mongoose.Types.ObjectId },
-    agent_id: { type: String, },
+    agent_id: { type: mongoose.Types.ObjectId, },
     // employee_status: { type: String },
     call_date: { type: Date },
     start_time: { type: String, },

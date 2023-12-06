@@ -14,5 +14,6 @@ router.post('/forgot-password', AdminModel.ForgotPassword);
 router.post('/verify-otp',verifyJwt, AdminModel.VerifyOtpBeforeResetPassword);
 router.post('/update-password',verifyJwt, AdminModel.UpdatePassword);
 router.post('/create_user', AdminModel.AddUser);
+router.get('/get_call',AdminModel.getAvgCallTime)
 
 export default router
