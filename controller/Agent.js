@@ -145,6 +145,7 @@ class AgentModel {
         department,
         disposition,
         special_occassion,
+        hotel_destination: req.body.hotel_destination.toUpperCase(),
       });
       return res.status(200).json({
         status: true,
@@ -317,6 +318,9 @@ class AgentModel {
               {
                 call_date: JSON.stringify(new Date()).split("T")[0].slice(1),
               },
+              {
+                department: "RESERVATION",
+              },
             ],
           },
         },
@@ -381,7 +385,7 @@ class AgentModel {
                 agent_id: new mongoose.Types.ObjectId(req.authData._id),
               },
               {
-                call_date: JSON.stringify(new Date()).split("T")[0].slice(1),
+                department: "RESERVATION",
               },
             ],
           },
@@ -402,6 +406,7 @@ class AgentModel {
             hotel_name: 1,
             guest_name: "$guest.guest_first_name",
             guest_last_name: "$guest.guest_last_name",
+            arrival_date: 1,
           },
         },
         {
@@ -415,6 +420,27 @@ class AgentModel {
         condition.unshift({
           $match: {
             hotel_name: req.query.hotel_name,
+          },
+        });
+      }
+
+      if (!req.query.disposition) {
+        condition.unshift({
+          $match: {
+            $or: [
+              {
+                disposition: "Follow Up - Reservation",
+              },
+              {
+                disposition: "Follow Up - No Reservation",
+              },
+            ],
+          },
+        });
+      } else {
+        condition.unshift({
+          $match: {
+            disposition: req.query.disposition,
           },
         });
       }
@@ -463,16 +489,20 @@ class AgentModel {
         },
       ];
 
-      if(req.query.missed){
-        condition.push({$match:{
-            dial_status:"Missed"
-        }})
+      if (req.query.missed) {
+        condition.push({
+          $match: {
+            dial_status: "Missed",
+          },
+        });
       }
 
-      if(req.query.abandoned){
-        condition.push({$match:{
-            dial_status:"Rejected"
-        }})
+      if (req.query.abandoned) {
+        condition.push({
+          $match: {
+            dial_status: "Rejected",
+          },
+        });
       }
       let findCalls = await callDetails.aggregate(condition);
       return res.status(200).json({
@@ -480,6 +510,59 @@ class AgentModel {
         code: 200,
         message: "Details....",
         data: findCalls,
+      });
+    } catch (error) {
+      return res.status(500).json({
+        status: false,
+        code: 500,
+        message: error.message,
+      });
+    }
+  }
+
+  static async hotelNameList(req, res, next) {
+    try {
+      let condition = [
+        { $match: {} },
+        {
+          $project: {
+            hotel_destination: 1,
+          },
+        },
+      ];
+      if (req.authData.role === "ADMIN") {
+        condition.unshift({
+          $match: {
+            admin_id: new mongoose.Types.ObjectId(req.authData._id),
+          },
+        });
+      }
+
+      if (req.authData.role === "AGENT") {
+        condition.unshift({
+          $match: {
+            agent_id: new mongoose.Types.ObjectId(req.authData._id),
+          },
+        });
+      }
+
+      let findHotelDestination = await callDetails.aggregate(condition);
+
+      const unique = findHotelDestination.reduce((acc, curr) => {
+        const matchingNode = acc.find(
+          (node) => node.hotel_destination === curr.hotel_destination
+        );
+        if (!matchingNode) {
+          acc.push(curr);
+        }
+        return acc;
+      }, []);
+
+      return res.status(200).json({
+        status: true,
+        code: 200,
+        message: "Details....",
+        data: unique,
       });
     } catch (error) {
       return res.status(500).json({

@@ -11,7 +11,7 @@ const call = new mongoose.Schema({
     // employee_status: { type: String },
     call_date: { type: String, required: true },
     start_time: { type: String, },
-    disposition: { type: String },
+    disposition: { type: mongoose.Types.ObjectId },
     end_time: { type: String},
     hotel_name: {
         type: String,
