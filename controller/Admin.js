@@ -783,13 +783,18 @@ class AdminModel {
 
   static async CallsMonthBarGraph(req, res, next) {
     try {
-
+      const admin_id = req.authData?.admin_id || "656f0c455589a45cbf4a1f51";
       let currentDate = new Date();
       let result = [];
       for (let i = 0; i < 7; i++) {
         let firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
         let lastDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() - i + 1, 0);
         let pipeline = [
+          {
+            $match: {
+              admin_id : new mongoose.Types.ObjectId(admin_id),
+            },
+          },
           {
             $match: {
               $and: [
@@ -845,7 +850,13 @@ class AdminModel {
 
   static async CallsCurrentDate(req, res, next) {
     try {
+      const admin_id = req.authData?.admin_id || "656f0c455589a45cbf4a1f51";
       let pipeline = [
+        {
+          $match: {
+            admin_id : new mongoose.Types.ObjectId(admin_id),
+          },
+        },
         {
           $match: {
             call_date: JSON.stringify(new Date()).split("T")[0].slice(1),
