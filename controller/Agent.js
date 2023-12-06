@@ -466,6 +466,27 @@ class AgentModel {
 
   static async dispositionGraph(req, res, next) {
     try {
+      let condition = [{ $match: {} }];
+
+
+      if(req.query.type === "WEEK"){
+        
+
+      }
+
+      if(req.query.type === "DAY"){
+
+      }
+
+
+      if(req.query.type === "MONTH"){
+
+      }
+     
+
+
+
+
       return res.status(200).json({
         status: true,
         code: 200,
@@ -522,7 +543,7 @@ class AgentModel {
     }
   }
 
-  static async hotelNameList(req, res, next) {
+  static async hotelDestinationList(req, res, next) {
     try {
       let condition = [
         { $match: {} },
@@ -553,6 +574,59 @@ class AgentModel {
       const unique = findHotelDestination.reduce((acc, curr) => {
         const matchingNode = acc.find(
           (node) => node.hotel_destination === curr.hotel_destination
+        );
+        if (!matchingNode) {
+          acc.push(curr);
+        }
+        return acc;
+      }, []);
+
+      return res.status(200).json({
+        status: true,
+        code: 200,
+        message: "Details....",
+        data: unique,
+      });
+    } catch (error) {
+      return res.status(500).json({
+        status: false,
+        code: 500,
+        message: error.message,
+      });
+    }
+  }
+
+  static async hotelNameList(req, res, next) {
+    try {
+      let condition = [
+        { $match: {} },
+        {
+          $project: {
+            hotel_name: 1,
+          },
+        },
+      ];
+      if (req.authData.role === "ADMIN") {
+        condition.unshift({
+          $match: {
+            admin_id: new mongoose.Types.ObjectId(req.authData._id),
+          },
+        });
+      }
+
+      if (req.authData.role === "AGENT") {
+        condition.unshift({
+          $match: {
+            agent_id: new mongoose.Types.ObjectId(req.authData._id),
+          },
+        });
+      }
+
+      let findHotelDestination = await callDetails.aggregate(condition);
+
+      const unique = findHotelDestination.reduce((acc, curr) => {
+        const matchingNode = acc.find(
+          (node) => node.hotel_name === curr.hotel_name
         );
         if (!matchingNode) {
           acc.push(curr);
