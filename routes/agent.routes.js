@@ -6,7 +6,9 @@ const router = express.Router();
 
 router.post('/add_call',verifyJwt,Agent.AddCall)
 router.get('/dashboard_card',verifyJwt,Agent.AgentDashboardCard)
-router.get('/today_conversation',verifyJwt,Agent.TodayConversation)
+router.get('/today_conversation',verifyJwt,Agent.TodayConversions)
+router.get('/call_details',verifyJwt,Agent.agentCalls)
+
 
 
 export default router
