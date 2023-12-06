@@ -5,6 +5,7 @@ import User from "../model/User.js";
 import guestDetail from "../model/Guest.js";
 
 import mongoose from "mongoose";
+import { randomString } from "../middleware/custom.js";
 class AgentModel {
   static async GuestInfo(req, res, next) {
     const { phone_number } = req.body;
@@ -139,6 +140,7 @@ class AgentModel {
         last_support_by,
         hang_up_by,
         arrival_date,
+        reservationIds : randomString(7),
         departure_date,
         purpose_of_travel,
         remark,
