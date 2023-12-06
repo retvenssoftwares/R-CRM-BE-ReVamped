@@ -8,6 +8,10 @@ router.post('/add_call',verifyJwt,Agent.AddCall)
 router.get('/dashboard_card',verifyJwt,Agent.AgentDashboardCard)
 router.get('/today_conversation',verifyJwt,Agent.TodayConversions)
 router.get('/call_details',verifyJwt,Agent.agentCalls)
+router.get('/hotel_destination',verifyJwt,Agent.hotelNameList)
+router.get('/pending_follow_up',verifyJwt,Agent.PendingFollowUp)
+
+
 
 
 

@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import Guest from "../model/Guest.js"
+import User from "../model/User.js";
 import callsDetails from "../model/callDetails.js"
 
 class GuestDeatils {
@@ -18,14 +19,32 @@ class GuestDeatils {
                 as: "calls_info"            // Alias for the joined documents
             }
         },
-        
+
         ]);
 
         return res.status(200).json({
             success: true,
             code: 200,
-            data : findCalls
-          });
+            data: findCalls
+        });
+
+    }
+
+    static async getAllGuestDetails(req, res, next) {
+        let findCalls ;
+        if(req.authData.role === 'ADMIN'){
+            findCalls = await Guest.find().lean()
+
+        }else if(req.authData.role === 'AGENT'){
+            findCalls = await Guest.find({agent_id:req.authData._id}).lean()
+
+        }
+
+        return res.status(200).json({
+            success: true,
+            code: 200,
+            data: findCalls
+        });
 
     }
 }
