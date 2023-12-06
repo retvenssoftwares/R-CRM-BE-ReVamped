@@ -24,4 +24,5 @@ router.post('/create_user',verifyJwt, AdminModel.AddUser);
 router.get('/stats-card', AdminModel.getAvgCallTime);
 router.get('/calls-bar-graph', AdminModel.CallsMonthBarGraph);
 router.get('/calls-today', AdminModel.CallsCurrentDate);
+router.get('/all-time-performer', AdminModel.AllTimePerFormer);
 export default router
