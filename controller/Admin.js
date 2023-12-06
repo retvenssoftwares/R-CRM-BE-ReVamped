@@ -783,13 +783,18 @@ class AdminModel {
 
   static async CallsMonthBarGraph(req, res, next) {
     try {
-
+      const admin_id = req.authData?.admin_id || "656f0c455589a45cbf4a1f51";
       let currentDate = new Date();
       let result = [];
       for (let i = 0; i < 7; i++) {
         let firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
         let lastDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() - i + 1, 0);
         let pipeline = [
+          {
+            $match: {
+              admin_id : new mongoose.Types.ObjectId(admin_id),
+            },
+          },
           {
             $match: {
               $and: [
@@ -809,19 +814,19 @@ class AdminModel {
             }
           }
         ]
-        
-        if(req.query.hotel_destination){
+
+        if (req.query.hotel_destination) {
           pipeline.unshift({
             $match: {
-              "hotel_destination" : req.query.hotel_destination
+              "hotel_destination": req.query.hotel_destination
             }
           })
         }
 
-        if(req.query.hotel_name){
+        if (req.query.hotel_name) {
           pipeline.unshift({
             $match: {
-              hotel_name : req.query.hotel_name
+              hotel_name: req.query.hotel_name
             }
           })
         }
@@ -837,6 +842,213 @@ class AdminModel {
         code: 200,
         message: "Data Fetched successfully",
         data: result.reverse()
+      });
+    } catch (error) {
+      return next(new ErrorHandler(error.message, 500));
+    }
+  }
+
+  static async CallsCurrentDate(req, res, next) {
+    try {
+      const admin_id = req.authData?.admin_id || "656f0c455589a45cbf4a1f51";
+      let pipeline = [
+        {
+          $match: {
+            admin_id : new mongoose.Types.ObjectId(admin_id),
+          },
+        },
+        {
+          $match: {
+            call_date: JSON.stringify(new Date()).split("T")[0].slice(1),
+          },
+        },
+        {
+          $lookup: {
+            from: "guest_details",
+            localField: "guest_id",
+            foreignField: "_id",
+            as: "guest"
+          }
+        },
+        {
+          $unwind: "$guest"
+        },
+        {
+          $addFields: {
+            startDate: {
+              $dateFromString: {
+                dateString: "$arrival_date"
+              }
+            },
+            endDate: {
+              $dateFromString: {
+                dateString: "$departure_date"
+              }
+            }
+          }
+        },
+        {
+          $addFields: {
+            noOfNights: {
+              $divide: [
+                {
+                  $subtract: ["$endDate", "$startDate"]
+                },
+                1000 * 60 * 60 * 24
+              ]
+            }
+          }
+        },
+        {
+          $project: {
+            hotel_name: 1,
+            guest_first_name: '$guest.guest_first_name',
+            guest_last_name: '$guest.guest_last_name',
+            noOfNights: 1
+          }
+        }
+      ];
+
+      if (req.query.hotel_name) {
+        pipeline.unshift({
+          $match: {
+            hotel_name: req.query.hotel_name
+          }
+        })
+      }
+
+      const data = await CallDetail.aggregate(pipeline);
+
+      return res.status(200).json({
+        status: true,
+        code: 200,
+        message: "Data Fetched successfully",
+        data: data
+      });
+    } catch (error) {
+      return next(new ErrorHandler(error.message, 500));
+    }
+  }
+
+  static async AllTimePerFormer(req, res, next) {
+    try {
+      const admin_id = req.authData?.admin_id || "656f0c455589a45cbf4a1f51";
+      let pipeline = [
+        {
+          $match: {
+            admin_id : new mongoose.Types.ObjectId(admin_id),
+          },
+        },
+        {
+          $match: {
+            department : "RESERVATION",
+          },
+        },
+        {
+          $group : {
+            _id : "$admin_id",
+            count : {$sum : 1}
+          }
+        },
+        {
+          $lookup: {
+            from: "users",
+            localField: "_id",
+            foreignField: "_id",
+            as: "user"
+          }
+        },
+        {
+          $unwind: "$user"
+        },
+        {
+          $project : {
+            name : "$user.name",
+            count : 1
+          }
+        }
+      ];
+
+      if (req.query.hotel_name) {
+        pipeline.unshift({
+          $match: {
+            hotel_name: req.query.hotel_name
+          }
+        })
+      }
+
+      const data = await CallDetail.aggregate(pipeline);
+
+      return res.status(200).json({
+        status: true,
+        code: 200,
+        message: "Data Fetched successfully",
+        data: data
+      });
+    } catch (error) {
+      return next(new ErrorHandler(error.message, 500));
+    }
+  }
+
+  static async TodayPerFormer(req, res, next) {
+    try {
+      const admin_id = req.authData?.admin_id || "656f0c455589a45cbf4a1f51";
+      let pipeline = [
+        {
+          $match: {
+            call_date: JSON.stringify(new Date()).split("T")[0].slice(1),
+          },
+        },
+        {
+          $match: {
+            admin_id : new mongoose.Types.ObjectId(admin_id),
+          },
+        },
+        {
+          $match: {
+            department : "RESERVATION",
+          },
+        },
+        {
+          $group : {
+            _id : "$admin_id",
+            count : {$sum : 1}
+          }
+        },
+        {
+          $lookup: {
+            from: "users",
+            localField: "_id",
+            foreignField: "_id",
+            as: "user"
+          }
+        },
+        {
+          $unwind: "$user"
+        },
+        {
+          $project : {
+            name : "$user.name",
+            count : 1
+          }
+        }
+      ];
+
+      if (req.query.hotel_name) {
+        pipeline.unshift({
+          $match: {
+            hotel_name: req.query.hotel_name
+          }
+        })
+      }
+
+      const data = await CallDetail.aggregate(pipeline);
+
+      return res.status(200).json({
+        status: true,
+        code: 200,
+        message: "Data Fetched successfully",
+        data: data
       });
     } catch (error) {
       return next(new ErrorHandler(error.message, 500));
