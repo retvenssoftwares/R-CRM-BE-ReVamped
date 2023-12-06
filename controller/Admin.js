@@ -854,17 +854,17 @@ class AdminModel {
         const d = await CallDetail.aggregate(pipeline);
         if (req.query.type === 'WEEKLY') {
           result.push({
-            startDate: lastDayOfMonth.toLocaleString('default', { month: 'short', day: "numeric", year: 'numeric' }),
+            type: lastDayOfMonth.toLocaleString('default', { month: 'short', day: "numeric", year: 'numeric' }),
             count: d[0]?.count || 0
           })
         } else if (req.query.type === 'DAYS') {
           result.push({
-            month: lastDayOfMonth.toLocaleString('default', { month: 'short', day: "numeric", year: 'numeric' }),
+            type: lastDayOfMonth.toLocaleString('default', { month: 'short', day: "numeric", year: 'numeric' }),
             count: d[0]?.count || 0
           })
         } else {
           result.push({
-            month: lastDayOfMonth.toLocaleString('default', { month: 'short' }),
+            type: lastDayOfMonth.toLocaleString('default', { month: 'short' }),
             count: d[0]?.count || 0
           })
         }
