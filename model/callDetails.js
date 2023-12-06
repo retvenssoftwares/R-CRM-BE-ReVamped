@@ -6,7 +6,7 @@ const call = new mongoose.Schema({
     guest_id: { type: mongoose.Types.ObjectId },
     agent_id: { type: mongoose.Types.ObjectId, },
     // employee_status: { type: String },
-    call_date: { type: Date },
+    call_date: { type: String},
     start_time: { type: String, },
     disposition: { type: String },
     end_time: { type: String},
@@ -28,8 +28,8 @@ const call = new mongoose.Schema({
     arrival_date:{ type: String},
     special_occassion:{ type: String},
     call_back_date_time :{ type: String},
-    department :{ type: String},
-    caller_type : { type : String , enum : ['MARKETING', 'SALES','RESERVATION'] },
+    department :{ type : String , enum : ['MARKETING', 'SALES','RESERVATION'] },
+    //caller_type : { type : String},
 
 });
 
