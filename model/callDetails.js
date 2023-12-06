@@ -30,6 +30,7 @@ const call = new mongoose.Schema({
     departure_date :{ type: String},
     arrival_date:{ type: String},
     special_occassion:{ type: String},
+    reservationId : {type:String},
     call_back_date_time :{ type: String},
     department :{ type : String , enum : ['MARKETING', 'SALES','RESERVATION'] },
     //caller_type : { type : String},
