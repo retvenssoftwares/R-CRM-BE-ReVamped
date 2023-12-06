@@ -1,0 +1,26 @@
+[
+  {
+    "name": "Information"
+  },
+  {
+    "name": "Reservation"
+  },
+  {
+    "name": "Shopping Follow Up"
+  },
+  {
+    "name": "Shopping No Follow Up"
+  },
+  {
+    "name": "Follow Up - Reservation"
+  },
+  {
+    "name": "Canellation"
+  },
+  {
+    "name": "Amendment"
+  },
+  {
+    "name": "Spam"
+  }
+]
