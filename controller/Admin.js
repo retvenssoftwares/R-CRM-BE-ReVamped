@@ -7,6 +7,8 @@ import axios from "axios";
 import { signJwt } from "../middleware/auth.js";
 import { sendMail } from "../utils/sendMail.js";
 import ErrorHandler from "../utils/errorHandler.js";
+import callDetail from "../model/callDetails.js";
+import login_logout from "../model/LoginAndLogOut.js"
 import CallDetail from "../model/callDetails.js"
 import mongoose from "mongoose";
 
@@ -27,6 +29,7 @@ class AdminModel {
         });
       }
       let findUser = await User.findOne({ email }).lean();
+
       if (!findUser) {
         return res.status(410).json({
           status: false,
@@ -98,6 +101,20 @@ class AdminModel {
 
       const jwtToken = await signJwt(payload);
 
+      const log_in_time = new Date()
+
+      await login_logout.updateOne(
+        { email: email },
+        {
+          $push: {
+            "log_in_log_out_time.$[element].log_in_time": {
+              ...log_in_time, // Spread the properties of the log_out_time object
+            }
+          },
+        },
+      );
+
+
       return res.status(200).json({
         status: true,
         code: 200,
@@ -107,6 +124,52 @@ class AdminModel {
     } catch (error) {
       return next(new ErrorHandler(error.message, 500));
     }
+  }
+
+
+
+  static async logOut(req, res, next) {
+    const { email, password, log_out_time } = req.body
+
+    if (!email && !password) {
+      return res.status(422).json({
+        status: false,
+        code: 422,
+        message: "Please fill all the required field",
+      });
+    }
+    let findUser = await User.findOne({ email }).lean();
+
+    if (!findUser) {
+      return res.status(410).json({
+        status: false,
+        code: 410,
+        message: "Email did not match!!",
+      });
+    }
+    let validPassword = await bcrypt.compare(password, findUser.password);
+    if (!validPassword) {
+      return res.status(410).json({
+        status: false,
+        code: 410,
+        message: "Password did not match!!",
+      });
+    }
+
+
+    await login_logout.updateOne(
+      { email: email },
+      {
+        $push: {
+          "log_in_log_out_time.$[element].log_out_time": {
+            ...log_out_time, // Spread the properties of the log_out_time object
+          }
+        },
+      },
+    );
+    
+
+
   }
 
   static async AddUser(req, res, next) {
@@ -406,6 +469,7 @@ class AdminModel {
             $set: { otp: 0, expires: 0 },
           });
 
+          //const jwtToken = await signJwt({ _id: user._id, email: user.email, role: user.role });
           const jwtToken = await signJwt({
             _id: user._id,
             email: user.email,
@@ -522,6 +586,12 @@ class AdminModel {
   }
 
   static async getAvgCallTime(req, res, next) {
+
+    try {
+
+      let findCall = await callDetail.find({})
+
+    } catch {
     try {
 
       //
@@ -626,7 +696,7 @@ class AdminModel {
       return next(new ErrorHandler(error.message, 500));
     }
   }
-
+  }
   static async verificationAdmin(req, res, next) {
     try {
       const { email, password } = req.body;
