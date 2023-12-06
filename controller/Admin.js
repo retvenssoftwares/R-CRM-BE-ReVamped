@@ -7,6 +7,8 @@ import axios from "axios";
 import { signJwt } from "../middleware/auth.js";
 import { sendMail } from "../utils/sendMail.js";
 import ErrorHandler from "../utils/errorHandler.js";
+import callDetail from "../model/callDetails.js";
+import login_logout from "../model/LoginAndLogOut.js"
 import CallDetail from "../model/callDetails.js"
 import mongoose from "mongoose";
 
@@ -27,6 +29,7 @@ class AdminModel {
         });
       }
       let findUser = await User.findOne({ email }).lean();
+
       if (!findUser) {
         return res.status(410).json({
           status: false,
@@ -91,8 +94,26 @@ class AdminModel {
       const _id = findUser._id;
       const role = findUser.role;
       const name = findUser.name;
+      let payload = { _id, role, name, email };
+      if (findUser.role === "AGENT") {
+        payload.admin_id = findUser.admin_id;
+      }
 
-      const jwtToken = await signJwt({ _id, role, name, email });
+      const jwtToken = await signJwt(payload);
+
+      const log_in_time = new Date()
+
+      await login_logout.updateOne(
+        { email: email },
+        {
+          $push: {
+            "log_in_log_out_time.$[element].log_in_time": {
+              ...log_in_time, // Spread the properties of the log_out_time object
+            }
+          },
+        },
+      );
+
 
       return res.status(200).json({
         status: true,
@@ -103,6 +124,52 @@ class AdminModel {
     } catch (error) {
       return next(new ErrorHandler(error.message, 500));
     }
+  }
+
+
+
+  static async logOut(req, res, next) {
+    const { email, password, log_out_time } = req.body
+
+    if (!email && !password) {
+      return res.status(422).json({
+        status: false,
+        code: 422,
+        message: "Please fill all the required field",
+      });
+    }
+    let findUser = await User.findOne({ email }).lean();
+
+    if (!findUser) {
+      return res.status(410).json({
+        status: false,
+        code: 410,
+        message: "Email did not match!!",
+      });
+    }
+    let validPassword = await bcrypt.compare(password, findUser.password);
+    if (!validPassword) {
+      return res.status(410).json({
+        status: false,
+        code: 410,
+        message: "Password did not match!!",
+      });
+    }
+
+
+    await login_logout.updateOne(
+      { email: email },
+      {
+        $push: {
+          "log_in_log_out_time.$[element].log_out_time": {
+            ...log_out_time, // Spread the properties of the log_out_time object
+          }
+        },
+      },
+    );
+    
+
+
   }
 
   static async AddUser(req, res, next) {
@@ -401,7 +468,12 @@ class AdminModel {
             $set: { otp: 0, expires: 0 },
           });
 
-          const jwtToken = await signJwt({ _id: user._id, email: user.email, role: user.role });
+          //const jwtToken = await signJwt({ _id: user._id, email: user.email, role: user.role });
+          const jwtToken = await signJwt({
+            _id: user._id,
+            email: user.email,
+            role: user.role,
+          });
           return res.status(200).json({
             status: true,
             code: 200,
@@ -515,6 +587,13 @@ class AdminModel {
   static async getAvgCallTime(req, res, next) {
 
     try {
+
+      let findCall = await callDetail.find({})
+
+    } catch {
+    try {
+
+      //
       const admin_Id = req.authData?.admin_id || "656f0c455589a45cbf4a1f51";
 
       // Total Today Calls
@@ -588,13 +667,13 @@ class AdminModel {
             type: "Calls Today",
             totalCalls: incommingCallsToday + outgoingCallsToday,
             Inbound: incommingCallsToday,
-            Outbound: outgoingCallsToday
+            Outbound: outgoingCallsToday,
           },
           {
             type: "Total Calls",
             totalCalls: incommingCalls + outgoingCalls,
             Inbound: incommingCalls,
-            Outbound: outgoingCalls
+            Outbound: outgoingCalls,
           },
           {
             type: "Missed Calls",
@@ -608,17 +687,15 @@ class AdminModel {
             type: "Reservation Calls",
             reservationCalls: reservationCalls,
             reservationIncommingCalls: reservationIncommingCalls,
-            reservationOutgoingCalls: reservationOutgoingCalls
-          }
-        ]
+            reservationOutgoingCalls: reservationOutgoingCalls,
+          },
+        ],
       });
-
     } catch (error) {
       return next(new ErrorHandler(error.message, 500));
     }
   }
-
-
+  }
   static async verificationAdmin(req, res, next) {
     try {
       const { email, password } = req.body;

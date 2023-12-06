@@ -1,144 +1,356 @@
-import bcryptjs from "bcryptjs"
-import data from "../model/callDetails.js"
+import bcryptjs from "bcryptjs";
+import callDetails from "../model/callDetails.js";
 // import Guest from '../model/Guest.js'
-import User from "../model/User.js"
-import guestDetail from '../model/Guest.js'
+import User from "../model/User.js";
+import guestDetail from "../model/Guest.js";
+
+import mongoose from "mongoose";
 class AgentModel {
-    static async AgentLogin(req, res, next) {
+  static async GuestInfo(req, res, next) {
+    const { phone_number } = req.body;
 
-        const { email, password } = req.body
+    let findGuest = await guestDetail.findOne({ phone_number });
 
-        if (!email || !password) {
-            return res.status(422).json({
-                status: false,
-                code: 422,
-                message: "Please fill all the required field",
-            });
-        }
-
-        const findAgent = await findOne({ email })
-        if (!findAgent) {
-            return res.status(404).json({
-                status: false,
-                code: 404,
-                message: "Data not found",
-            });
-        }
-
-        let validPassword = await bcryptjs.compare(password, findAgent.password)
-
-        if (!validPassword) {
-            return res.status(401).json({
-                status: false,
-                code: 401,
-                message: "Incorrect Password",
-            });
-        }
-
-        const { agentId, agentext } = findAgent
-
+    if (findGuest) {
+      return res.status(200).json({
+        status: true,
+        code: 200,
+        message: "User Detail",
+        data: findGuest,
+      });
+    } else {
+      return res.status(404).json({
+        status: false,
+        code: 404,
+        message: "User not found",
+      });
     }
+  }
 
-    static async GuestInfo(req, res, next) {
+  static async AddGuest(req, res, next) {
+    try {
+      const { guest_mobile_number } = req.body;
 
-        const { phone_number } = req.body
+      let findGuest = await guestDetail.findOne({ guest_mobile_number }).lean();
+      if (findGuest) {
+        return res.status(409).json({
+          status: false,
+          code: 409,
+          message: "User already exists",
+        });
+      } else {
+        const {
+          salutation,
+          guest_first_name,
+          guest_last_name,
+          guest_mobile_number,
+          alternate_contact,
+          email,
+          guest_address_1,
+          guest_address_2,
+          city,
+          state,
+          country,
+        } = req.body;
 
-        let findGuest = await guestDetail.findOne({ phone_number })
+        let agent_id = req.authData._id;
 
-        if (findGuest) {
-            return res.status(200).json({
-                status: true,
-                code: 200,
-                message: "User Detail",
-                data: findGuest
-            });
-        } else {
-            return res.status(404).json({
-                status: false,
-                code: 404,
-                message: "User not found",
-            });
-        }
+        let newGuest = await guestDetail.create({
+          agent_id,
+          salutation,
+          guest_first_name,
+          guest_last_name,
+          guest_mobile_number,
+          alternate_contact,
+          email,
+          guest_address_1,
+          guest_address_2,
+          city,
+          state,
+          country,
+        });
+        // return res.status(200).json({
+        //     status: true,
+        //     code: 200,
+        //     message: "User added",
+        //     data: newGuest
+        // });
 
-
+        return newGuest;
+      }
+    } catch (error) {
+      return res.status(500).json({
+        status: false,
+        code: 500,
+        message: error.message,
+      });
     }
+  }
 
-    static async AddGuest(req, res, next) {
-        try{
-            const { guest_mobile_number } = req.body
+  static async AddCall(req, res, next) {
+    try {
+      let guest_id = req?.body?.guest_id;
 
-            let findGuest = await guestDetail.findOne({ guest_mobile_number }).lean()
-            if (findGuest) {
-                return res.status(409).json({
-                    status: false,
-                    code: 409,
-                    message: "User already exists",
-                });
-            } else {
-    
-                const { salutation, guest_first_name, guest_last_name, guest_mobile_number, alternate_contact, email, guest_address_1, guest_address_2, city, state, country} = req.body
-    
-                let agent_id = req.authData._id
-    
-                let newGuest = await guestDetail.create({
-                    agent_id,
-                    salutation, guest_first_name, guest_last_name, guest_mobile_number, alternate_contact, email, guest_address_1, guest_address_2, city, state, country, 
-                })
-                // return res.status(200).json({
-                //     status: true,
-                //     code: 200,
-                //     message: "User added",
-                //     data: newGuest
-                // });
-    
-                return newGuest
-            }
-    
-        }catch(error){
-            return res.status(500).json({
-                status: false,
-                code: 500,
-                message: error.message,
-            });
-        }
+      if (!req.body.guest_id) {
+        let newuser = await AgentModel.AddGuest(req);
+        guest_id = newuser._id;
+      }
 
-        
+      let agent_id = req.authData._id;
+      const {
+        call_date,
 
+        caller_type,
+        start_time,
+        end_time,
+        hotel_name,
+        talktime,
+        time_to_answer,
+        type,
+        callback_time_date,
+        dial_status,
+        last_called,
+        last_support_by,
+        hang_up_by,
+        arrival_date,
+        departure_date,
+        purpose_of_travel,
+        remark,
+        department,
+        disposition,
+        special_occassion,
+      } = req.body;
+
+      let newCalls = await callDetails.create({
+        agent_id,
+        guest_id,
+        call_date,
+        caller_type,
+        start_time,
+        end_time,
+        hotel_name,
+        talktime,
+        admin_id: req?.authData?.admin_id,
+        time_to_answer,
+        type,
+        callback_time_date,
+        dial_status,
+        last_called,
+        last_support_by,
+        hang_up_by,
+        arrival_date,
+        departure_date,
+        purpose_of_travel,
+        remark,
+        department,
+        disposition,
+        special_occassion,
+      });
+      return res.status(200).json({
+        status: true,
+        code: 200,
+        message: "Call detail added...",
+        data: newCalls,
+      });
+    } catch (error) {
+      return res.status(500).json({
+        status: false,
+        code: 500,
+        message: error.message,
+      });
     }
+  }
 
-    static async AddCall(req, res, next) {
-        try {
-            let guest_id = req?.body?.guest_id
+  static async AgentDashboardCard(req, res, next) {
+    try {
+      let total_call = await callDetails.countDocuments({
+        agent_id: req.authData._id,
+      });
 
-            if (!req.body.guest_id) {
-                let newuser = await AgentModel.AddGuest(req)
-                guest_id = newuser._id
-            }
+      let total_incoming_call = await callDetails.countDocuments({
+        $and: [
+          { type: "Inbound" },
+          { agent_id: new mongoose.Types.ObjectId(req.authData._id) },
+        ],
+      });
+      let total_outgoing_call = await callDetails.countDocuments({
+        $and: [
+          { type: "Outbound" },
+          { agent_id: new mongoose.Types.ObjectId(req.authData._id) },
+        ],
+      });
 
-            let agent_id = req.authData._id
-            const {call_date, caller_type, start_time, end_time, hotel_name,talktime, time_to_answer, type, callback_time_date, dial_status,last_called,last_support_by, hang_up_by, arrival_date, departure_date, purpose_of_travel, remark, department, disposition,special_occassion} = req.body
+      let today_call = await callDetails.countDocuments({
+        call_date: JSON.stringify(new Date()).split("T")[0].slice(1),
+      });
+      let today_incoming_call = await callDetails.countDocuments({
+        $and: [
+          { type: "Inbound" },
+          { agent_id: new mongoose.Types.ObjectId(req.authData._id) },
+          { call_date: JSON.stringify(new Date()).split("T")[0].slice(1) },
+        ],
+      });
+      let today_outgoing_call = await callDetails.countDocuments({
+        $and: [
+          { type: "Outbound" },
+          { agent_id: new mongoose.Types.ObjectId(req.authData._id) },
+          { call_date: JSON.stringify(new Date()).split("T")[0].slice(1) },
+        ],
+      });
 
-        
-            let newCalls = await data.create({agent_id,guest_id,call_date, caller_type, start_time, end_time, hotel_name,talktime, time_to_answer, type, callback_time_date, dial_status,last_called,last_support_by, hang_up_by, arrival_date, departure_date, purpose_of_travel, remark, department, disposition,special_occassion})
-            return res.status(200).json({
-                status: true,
-                code: 200,
-                message: "Call detail added...",
-                data: newCalls
-            });
-        } catch (error) {
-            return res.status(500).json({
-                status: false,
-                code: 500,
-                message: error.message,
-            });
-        }
+      let reservation_call = await callDetails.countDocuments({
+        department: "RESERVATION",
+      });
+      let reservation_incoming_call = await callDetails.countDocuments({
+        $and: [
+          { type: "Inbound" },
+          { agent_id: new mongoose.Types.ObjectId(req.authData._id) },
+          { department: "RESERVATION" },
+        ],
+      });
+      let reservation_outgoing_call = await callDetails.countDocuments({
+        $and: [
+          { type: "Outbound" },
+          { agent_id: new mongoose.Types.ObjectId(req.authData._id) },
+          { department: "RESERVATION" },
+        ],
+      });
 
+      let reservation_today = await callDetails.countDocuments({
+        $and: [
+          {
+            department: "RESERVATION",
+          },
+          { agent_id: new mongoose.Types.ObjectId(req.authData._id) },
+          { call_date: JSON.stringify(new Date()).split("T")[0].slice(1) },
+        ],
+      });
+      let reservation_incoming_today = await callDetails.countDocuments({
+        $and: [
+          { type: "Inbound" },
+          { agent_id: new mongoose.Types.ObjectId(req.authData._id) },
+          { department: "RESERVATION" },
+          { call_date: JSON.stringify(new Date()).split("T")[0].slice(1) },
+        ],
+      });
+      let reservation_outgoing_today = await callDetails.countDocuments({
+        $and: [
+          { type: "Outbound" },
+          { agent_id: new mongoose.Types.ObjectId(req.authData._id) },
+          { department: "RESERVATION" },
+          { call_date: JSON.stringify(new Date()).split("T")[0].slice(1) },
+        ],
+      });
 
+      let total_missed_call = await callDetails.countDocuments({
+        $and: [
+          { type: "Inbound" },
+          { agent_id: new mongoose.Types.ObjectId(req.authData._id) },
+          {
+            dial_status: "Missed",
+          },
+        ],
+      });
+
+      let no_answer = await callDetails.countDocuments({
+        $and: [
+          { type: "Outbound" },
+          { agent_id: new mongoose.Types.ObjectId(req.authData._id) },
+          {
+            dial_status: "Missed",
+          },
+        ],
+      });
+
+      let abandoned = await callDetails.countDocuments({
+        $and: [
+          { agent_id: new mongoose.Types.ObjectId(req.authData._id) },
+          {
+            dial_status: "Rejected",
+          },
+        ],
+      });
+
+      let data1 = {
+        total_call: total_call,
+        total_incoming_call: total_incoming_call,
+        total_outgoing_call: total_outgoing_call,
+        today_call: today_call,
+        today_incoming_call: today_incoming_call,
+        today_outgoing_call: today_outgoing_call,
+        today_outgoing_call: today_outgoing_call,
+        reservation_call: reservation_call,
+        reservation_incoming_call: reservation_incoming_call,
+        reservation_outgoing_call: reservation_outgoing_call,
+        reservation_today: reservation_today,
+        reservation_incoming_today: reservation_incoming_today,
+        reservation_outgoing_today: reservation_outgoing_today,
+        total_missed_call: total_missed_call,
+        no_answer: no_answer,
+        abandoned: abandoned,
+      };
+
+      return res.status(200).json({
+        status: true,
+        code: 200,
+        message: "Details....",
+        data: data1,
+      });
+    } catch (error) {
+      return res.status(500).json({
+        status: false,
+        code: 500,
+        message: error.message,
+      });
     }
+  }
 
-   
+  static async TodayConversation(req, res, next) {
+    try {
+      let condition = [
+        {
+          $match: {
+            $and: [
+              {
+                agent_id: new mongoose.Types.ObjectId(req.authData._id),
+              },
+              {
+                call_date: JSON.stringify(new Date()).split("T")[0].slice(1),
+              },
+            ],
+          },
+        },
+        {
+          $lookup: {
+            from: "guests",
+            localField: "_id",
+            foreignField: "unit_id",
+            as: "chapter",
+          },
+        },
+        {
+          $addFields: {
+            no_of_chapter: { $count: "$chapter" },
+          },
+        },
+      ];
 
+      let findCall = await callDetails.aggregate(condition);
+
+      return res.status(200).json({
+        status: true,
+        code: 200,
+        message: "Details....",
+        data: findCall,
+      });
+    } catch (error) {
+      return res.status(500).json({
+        status: false,
+        code: 500,
+        message: error.message,
+      });
+    }
+  }
 }
 
-export default AgentModel
+export default AgentModel;
