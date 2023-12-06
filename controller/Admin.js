@@ -8,6 +8,7 @@ import { signJwt } from "../middleware/auth.js";
 import { sendMail } from "../utils/sendMail.js";
 import ErrorHandler from "../utils/errorHandler.js";
 import CallDetail from "../model/callDetails.js"
+import mongoose from "mongoose";
 
 dotenv.config({ path: "./.env" });
 
@@ -515,35 +516,75 @@ class AdminModel {
   static async getAvgCallTime(req, res, next) {
 
     try {
+      const admin_Id = req.authData?.admin_id || "656f0c455589a45cbf4a1f51";
 
       // Total Today Calls
       const currentDate = JSON.stringify(new Date()).split("T")[0].slice(1);
-      const incommingCallsToday = await CallDetail.countDocuments({ call_date: currentDate, type: "Inbound" });
-      const outgoingCallsToday = await CallDetail.countDocuments({ call_date: currentDate, type: "Outbound" });
+      const incommingCallsToday = await CallDetail.countDocuments({admin_id : new mongoose.Types.ObjectId(admin_Id) ,call_date: currentDate, type: "Inbound" });
+      const outgoingCallsToday = await CallDetail.countDocuments({ admin_id : new mongoose.Types.ObjectId(admin_Id), call_date: currentDate, type: "Outbound" });
 
 
       // Total Calls
-      const incommingCalls = await CallDetail.countDocuments({ call_date: currentDate, type: "Inbound" });
-      const outgoingCalls = await CallDetail.countDocuments({ call_date: currentDate, type: "Outbound" });
+      const incommingCalls = await CallDetail.countDocuments({admin_id : new mongoose.Types.ObjectId(admin_Id), call_date: currentDate, type: "Inbound" });
+      const outgoingCalls = await CallDetail.countDocuments({admin_id : new mongoose.Types.ObjectId(admin_Id), call_date: currentDate, type: "Outbound" });
 
       // Missed Calls
-      const missedCalls = await CallDetail.countDocuments({ dial_status: "Diconnected", type: "Inbound" });
+      const missedCalls = await CallDetail.countDocuments({admin_id : new mongoose.Types.ObjectId(admin_Id), dial_status: "Diconnected", type: "Inbound" });
 
       // Abandoned Calls
-      const abandonedCalls = await CallDetail.countDocuments({ dial_status: "Diconnected", type: "Outbound" });
+      const abandonedCalls = await CallDetail.countDocuments({admin_id : new mongoose.Types.ObjectId(admin_Id), dial_status: "Diconnected", type: "Outbound" });
 
       // Reservation Calls
-      const reservationCalls = await CallDetail.countDocuments({ call_date: currentDate, department: "RESERVATION" });
-      const reservationIncommingCalls = await CallDetail.countDocuments({ call_date: currentDate, type: "Inbound", department: "RESERVATION" });
-      const reservationOutgoingCalls = await CallDetail.countDocuments({ call_date: currentDate, type: "Outbound", department: "RESERVATION" });
+      const reservationCalls = await CallDetail.countDocuments({admin_id : new mongoose.Types.ObjectId(admin_Id), call_date: currentDate, department: "RESERVATION" });
+      const reservationIncommingCalls = await CallDetail.countDocuments({admin_id : new mongoose.Types.ObjectId(admin_Id), call_date: currentDate, type: "Inbound", department: "RESERVATION" });
+      const reservationOutgoingCalls = await CallDetail.countDocuments({admin_id : new mongoose.Types.ObjectId(admin_Id), call_date: currentDate, type: "Outbound", department: "RESERVATION" });
 
-      // 
+      // Average number of min
+      // const avgCallTimeIncoming = await CallDetail.aggregate([
+      //   {
+      //     $match: {
+      //       admin_id : new mongoose.Types.ObjectId(admin_Id),
+      //       type: "Inbound",
+      //       talktime: { $exists: true },
+      //     },
+      //   },
+      //   {
+      //     $group: {
+      //       _id: null,
+      //       avgCallTime: { $avg: "$talktime" },
+      //     },
+      //   },
+      // ]);
+
+      // const avgCallTimeOutgoing = await CallDetail.aggregate([
+      //   {
+      //     $match: {
+      //       admin_id : new mongoose.Types.ObjectId(admin_Id),
+      //       type: "Outbound",
+      //       talktime: { $exists: true },
+      //     },
+      //   },
+      //   {
+      //     $group: {
+      //       _id: null,
+      //       avgCallTime: { $avg: "$talktime" },
+      //     },
+      //   },
+      // ]);
+      
+
+
 
       return res.status(200).json({
         status: true,
         code: 200,
         message: "TODO",
         data: [
+          // {
+          //   type: "Average Call Time",
+          //   avgCallTimeIncoming: convertMinutesToTime(avgCallTimeIncoming[0]?.avgCallTime || 0),
+          //   avgCallTimeOutgoing: convertMinutesToTime(avgCallTimeOutgoing[0]?.avgCallTime || 0),
+          // },
           {
             type: "Calls Today",
             totalCalls: incommingCallsToday + outgoingCallsToday,
