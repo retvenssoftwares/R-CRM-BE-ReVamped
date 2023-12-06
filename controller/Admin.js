@@ -787,12 +787,28 @@ class AdminModel {
       let currentDate = new Date();
       let result = [];
       for (let i = 0; i < 7; i++) {
-        let firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
-        let lastDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() - i + 1, 0);
+        let firstDayOfMonth;
+        let lastDayOfMonth;
+
+        if (req.query.type === 'MONTHLY') {
+          firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
+          lastDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() - i + 1, 0);
+        } else if (req.query.type === 'WEEKLY') {
+          firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate() - i*7 - currentDate.getDay());
+          lastDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate() - i*7 - currentDate.getDay() + 6, 23, 59, 59, 999);
+        } else if (req.query.type === 'DAYS') {
+          firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate() - i);
+          lastDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate() - i, 23, 59, 59, 999);
+        } else {
+          firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
+          lastDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() - i + 1, 0);
+        }
+
+
         let pipeline = [
           {
             $match: {
-              admin_id : new mongoose.Types.ObjectId(admin_id),
+              admin_id: new mongoose.Types.ObjectId(admin_id),
             },
           },
           {
@@ -831,10 +847,23 @@ class AdminModel {
           })
         }
         const d = await CallDetail.aggregate(pipeline);
-        result.push({
-          month: lastDayOfMonth.toLocaleString('default', { month: 'short' }),
-          count: d[0]?.count || 0
-        })
+        if (req.query.type === 'WEEKLY') {
+          result.push({
+            startDate: lastDayOfMonth.toLocaleString('default', { month: 'short', day: "numeric", year: 'numeric' }),
+            count: d[0]?.count || 0
+          })
+        } else if (req.query.type === 'DAYS') {
+          result.push({
+            month: lastDayOfMonth.toLocaleString('default', { month: 'short', day: "numeric", year: 'numeric' }),
+            count: d[0]?.count || 0
+          })
+        } else {
+          result.push({
+            month: lastDayOfMonth.toLocaleString('default', { month: 'short' }),
+            count: d[0]?.count || 0
+          })
+        }
+
       }
 
       return res.status(200).json({
@@ -854,7 +883,7 @@ class AdminModel {
       let pipeline = [
         {
           $match: {
-            admin_id : new mongoose.Types.ObjectId(admin_id),
+            admin_id: new mongoose.Types.ObjectId(admin_id),
           },
         },
         {
@@ -936,18 +965,18 @@ class AdminModel {
       let pipeline = [
         {
           $match: {
-            admin_id : new mongoose.Types.ObjectId(admin_id),
+            admin_id: new mongoose.Types.ObjectId(admin_id),
           },
         },
         {
           $match: {
-            department : "RESERVATION",
+            department: "RESERVATION",
           },
         },
         {
-          $group : {
-            _id : "$admin_id",
-            count : {$sum : 1}
+          $group: {
+            _id: "$admin_id",
+            count: { $sum: 1 }
           }
         },
         {
@@ -962,9 +991,9 @@ class AdminModel {
           $unwind: "$user"
         },
         {
-          $project : {
-            name : "$user.name",
-            count : 1
+          $project: {
+            name: "$user.name",
+            count: 1
           }
         }
       ];
@@ -1001,18 +1030,18 @@ class AdminModel {
         },
         {
           $match: {
-            admin_id : new mongoose.Types.ObjectId(admin_id),
+            admin_id: new mongoose.Types.ObjectId(admin_id),
           },
         },
         {
           $match: {
-            department : "RESERVATION",
+            department: "RESERVATION",
           },
         },
         {
-          $group : {
-            _id : "$admin_id",
-            count : {$sum : 1}
+          $group: {
+            _id: "$admin_id",
+            count: { $sum: 1 }
           }
         },
         {
@@ -1027,9 +1056,9 @@ class AdminModel {
           $unwind: "$user"
         },
         {
-          $project : {
-            name : "$user.name",
-            count : 1
+          $project: {
+            name: "$user.name",
+            count: 1
           }
         }
       ];
