@@ -37,7 +37,6 @@ export async function seedDisposition() {
     const jsonString = await fs.readFileSync(filePath, "utf8");
     const disposition = JSON.parse(jsonString);
 
-
     const data = await Promise.all(
       disposition.map(async (elem) => {
         const findDisposition = await Disposition.findOne({
