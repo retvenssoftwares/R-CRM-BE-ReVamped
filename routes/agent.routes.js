@@ -4,6 +4,7 @@ import { verifyJwt } from '../middleware/auth.js';
 // import {verifyJwt} from '../middleware/auth.js'
 const router = express.Router();
 
-router.post('/login_agent', Agent.AgentLogin);
 router.post('/add_call',verifyJwt,Agent.AddCall)
+router.get('/dashboard',verifyJwt,Agent.AgentDashboard)
+
 export default router
