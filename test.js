@@ -1,50 +1,14 @@
 
-const MongoClient = require('mongodb').MongoClient;
+// Get the current date
+const currentDate = new Date();
 
-async function countDocumentsInEveryMonth(date) {
-    const uri = 'mongodb://localhost:27017';
-    const client = new MongoClient(uri);
+// Loop through the previous 7 days
+for (let i = 0; i < 7; i++) {
+  // Calculate the startDateTime and endDateTime for each day
+  const startDateTime = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate() - i, 0, 0, 0);
+  const endDateTime = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate() - i, 23, 59, 59);
 
-    try {
-        await client.connect();
-
-        const database = client.db('your_database_name');
-        const collection = database.collection('your_collection_name');
-
-        const startDate = new Date(date);
-        startDate.setDate(1); // Set the date to the first day of the month
-        const endDate = new Date(date);
-        endDate.setMonth(endDate.getMonth() + 1);
-        endDate.setDate(0); // Set the date to the last day of the month
-
-        const pipeline = [
-            {
-                $match: {
-                    date: {
-                        $gte: startDate,
-                        $lt: endDate
-                    }
-                }
-            },
-            {
-                $group: {
-                    _id: { $dateToString: { format: "%Y-%m", date: "$date" } },
-                    count: { $sum: 1 }
-                }
-            }
-        ];
-
-        const result = await collection.aggregate(pipeline).toArray();
-
-        console.log(`Number of documents in each month:`);
-        result.forEach((month) => {
-            console.log(`${month._id}: ${month.count}`);
-        });
-    } catch (error) {
-        console.error('Error:', error);
-    } finally {
-        await client.close();
-    }
+  // Use the startDateTime and endDateTime as needed
+  console.log(`Start DateTime for Day ${i + 1}: ${startDateTime}`);
+  console.log(`End DateTime for Day ${i + 1}: ${endDateTime}`);
 }
-
-countDocumentsInEveryMonth('2022-07-01');
