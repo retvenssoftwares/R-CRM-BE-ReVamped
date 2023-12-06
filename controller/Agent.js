@@ -270,12 +270,7 @@ class AgentModel {
         ],
       });
 
-      let avg_incoming = await data.find({
-        $and: [
-          { type: "Inbound" },
-          { agent_id: new mongoose.Types.ObjectId(req.authData._id) },
-        ],
-      });
+   
 
 
 
