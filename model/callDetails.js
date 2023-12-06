@@ -33,6 +33,7 @@ const call = new mongoose.Schema({
     call_back_date_time :{ type: String},
     department :{ type : String , enum : ['MARKETING', 'SALES','RESERVATION'] },
     //caller_type : { type : String},
+    hotel_destination :{ type: String},
 
 });
 
