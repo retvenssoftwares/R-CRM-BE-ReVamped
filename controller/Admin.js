@@ -809,19 +809,19 @@ class AdminModel {
             }
           }
         ]
-        
-        if(req.query.hotel_destination){
+
+        if (req.query.hotel_destination) {
           pipeline.unshift({
             $match: {
-              "hotel_destination" : req.query.hotel_destination
+              "hotel_destination": req.query.hotel_destination
             }
           })
         }
 
-        if(req.query.hotel_name){
+        if (req.query.hotel_name) {
           pipeline.unshift({
             $match: {
-              hotel_name : req.query.hotel_name
+              hotel_name: req.query.hotel_name
             }
           })
         }
@@ -837,6 +837,82 @@ class AdminModel {
         code: 200,
         message: "Data Fetched successfully",
         data: result.reverse()
+      });
+    } catch (error) {
+      return next(new ErrorHandler(error.message, 500));
+    }
+  }
+
+  static async CallsCurrentDate(req, res, next) {
+    try {
+      let pipeline = [
+        {
+          $match: {
+            call_date: JSON.stringify(new Date()).split("T")[0].slice(1),
+          },
+        },
+        {
+          $lookup: {
+            from: "guest_details",
+            localField: "guest_id",
+            foreignField: "_id",
+            as: "guest"
+          }
+        },
+        {
+          $unwind: "$guest"
+        },
+        {
+          $addFields: {
+            startDate: {
+              $dateFromString: {
+                dateString: "$arrival_date"
+              }
+            },
+            endDate: {
+              $dateFromString: {
+                dateString: "$departure_date"
+              }
+            }
+          }
+        },
+        {
+          $addFields: {
+            noOfNights: {
+              $divide: [
+                {
+                  $subtract: ["$endDate", "$startDate"]
+                },
+                1000 * 60 * 60 * 24
+              ]
+            }
+          }
+        },
+        {
+          $project: {
+            hotel_name: 1,
+            guest_first_name: '$guest.guest_first_name',
+            guest_last_name: '$guest.guest_last_name',
+            noOfNights: 1
+          }
+        }
+      ];
+
+      if (req.query.hotel_name) {
+        pipeline.unshift({
+          $match: {
+            hotel_name: req.query.hotel_name
+          }
+        })
+      }
+
+      const data = await CallDetail.aggregate(pipeline);
+
+      return res.status(200).json({
+        status: true,
+        code: 200,
+        message: "Data Fetched successfully",
+        data: data
       });
     } catch (error) {
       return next(new ErrorHandler(error.message, 500));
