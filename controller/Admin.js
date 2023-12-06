@@ -91,8 +91,12 @@ class AdminModel {
       const _id = findUser._id;
       const role = findUser.role;
       const name = findUser.name;
+      let payload = { _id, role, name, email };
+      if (findUser.role === "AGENT") {
+        payload.admin_id = findUser.admin_id;
+      }
 
-      const jwtToken = await signJwt({ _id, role, name, email });
+      const jwtToken = await signJwt(payload);
 
       return res.status(200).json({
         status: true,
@@ -402,7 +406,11 @@ class AdminModel {
             $set: { otp: 0, expires: 0 },
           });
 
-          const jwtToken = await signJwt({ _id: user._id, email: user.email, role: user.role });
+          const jwtToken = await signJwt({
+            _id: user._id,
+            email: user.email,
+            role: user.role,
+          });
           return res.status(200).json({
             status: true,
             code: 200,
@@ -514,8 +522,9 @@ class AdminModel {
   }
 
   static async getAvgCallTime(req, res, next) {
-
     try {
+
+      //
       const admin_Id = req.authData?.admin_id || "656f0c455589a45cbf4a1f51";
 
       // Total Today Calls
@@ -589,13 +598,13 @@ class AdminModel {
             type: "Calls Today",
             totalCalls: incommingCallsToday + outgoingCallsToday,
             Inbound: incommingCallsToday,
-            Outbound: outgoingCallsToday
+            Outbound: outgoingCallsToday,
           },
           {
             type: "Total Calls",
             totalCalls: incommingCalls + outgoingCalls,
             Inbound: incommingCalls,
-            Outbound: outgoingCalls
+            Outbound: outgoingCalls,
           },
           {
             type: "Missed Calls",
@@ -608,17 +617,15 @@ class AdminModel {
           {
             type: "Reservation Calls",
             reservationCalls: reservationCalls,
-            reservationIncommingCalls : reservationIncommingCalls,
-            reservationOutgoingCalls : reservationOutgoingCalls
-          }
-        ]
+            reservationIncommingCalls: reservationIncommingCalls,
+            reservationOutgoingCalls: reservationOutgoingCalls,
+          },
+        ],
       });
-
     } catch (error) {
       return next(new ErrorHandler(error.message, 500));
     }
   }
-
 
   static async verificationAdmin(req, res, next) {
     try {
