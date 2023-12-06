@@ -99,6 +99,7 @@ class AgentModel {
       let agent_id = req.authData._id;
       const {
         call_date,
+
         caller_type,
         start_time,
         end_time,
@@ -129,6 +130,7 @@ class AgentModel {
         end_time,
         hotel_name,
         talktime,
+        admin_id: req?.authData?.admin_id,
         time_to_answer,
         type,
         callback_time_date,
@@ -159,13 +161,12 @@ class AgentModel {
     }
   }
 
-  static async AgentDashboard(req, res, next) {
+  static async AgentDashboardCard(req, res, next) {
     try {
       let total_call = await callDetails.countDocuments({
-        agent_id:req.authData._id,
+        agent_id: req.authData._id,
       });
 
-      console.log(total_call,"total_calltotal_calltotal_calltotal_call",req.authData._id)
       let total_incoming_call = await callDetails.countDocuments({
         $and: [
           { type: "Inbound" },
@@ -246,8 +247,8 @@ class AgentModel {
           { type: "Inbound" },
           { agent_id: new mongoose.Types.ObjectId(req.authData._id) },
           {
-            dial_status:"Missed"
-          }
+            dial_status: "Missed",
+          },
         ],
       });
 
@@ -256,29 +257,19 @@ class AgentModel {
           { type: "Outbound" },
           { agent_id: new mongoose.Types.ObjectId(req.authData._id) },
           {
-            dial_status:"Missed"
-          }
+            dial_status: "Missed",
+          },
         ],
       });
 
-      let abandoned = await data.countDocuments({
+      let abandoned = await callDetails.countDocuments({
         $and: [
           { agent_id: new mongoose.Types.ObjectId(req.authData._id) },
           {
-            dial_status:"Rejected"
-          }
+            dial_status: "Rejected",
+          },
         ],
       });
-
-   
-
-
-
-
-
-
-
-
 
       let data1 = {
         total_call: total_call,
@@ -291,12 +282,12 @@ class AgentModel {
         reservation_call: reservation_call,
         reservation_incoming_call: reservation_incoming_call,
         reservation_outgoing_call: reservation_outgoing_call,
-        reservation_today:reservation_today,
-        reservation_incoming_today:reservation_incoming_today,
-        reservation_outgoing_today:reservation_outgoing_today,
-        total_missed_call:total_missed_call,
-        no_answer:no_answer,
-        abandoned:abandoned
+        reservation_today: reservation_today,
+        reservation_incoming_today: reservation_incoming_today,
+        reservation_outgoing_today: reservation_outgoing_today,
+        total_missed_call: total_missed_call,
+        no_answer: no_answer,
+        abandoned: abandoned,
       };
 
       return res.status(200).json({
@@ -304,6 +295,53 @@ class AgentModel {
         code: 200,
         message: "Details....",
         data: data1,
+      });
+    } catch (error) {
+      return res.status(500).json({
+        status: false,
+        code: 500,
+        message: error.message,
+      });
+    }
+  }
+
+  static async TodayConversation(req, res, next) {
+    try {
+      let condition = [
+        {
+          $match: {
+            $and: [
+              {
+                agent_id: new mongoose.Types.ObjectId(req.authData._id),
+              },
+              {
+                call_date: JSON.stringify(new Date()).split("T")[0].slice(1),
+              },
+            ],
+          },
+        },
+        {
+          $lookup: {
+            from: "guests",
+            localField: "_id",
+            foreignField: "unit_id",
+            as: "chapter",
+          },
+        },
+        {
+          $addFields: {
+            no_of_chapter: { $count: "$chapter" },
+          },
+        },
+      ];
+
+      let findCall = await callDetails.aggregate(condition);
+
+      return res.status(200).json({
+        status: true,
+        code: 200,
+        message: "Details....",
+        data: findCall,
       });
     } catch (error) {
       return res.status(500).json({

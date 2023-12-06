@@ -7,7 +7,7 @@ import axios from "axios";
 import { signJwt } from "../middleware/auth.js";
 import { sendMail } from "../utils/sendMail.js";
 import ErrorHandler from "../utils/errorHandler.js";
-import CallDetail from "../model/callDetails.js"
+import CallDetail from "../model/callDetails.js";
 
 dotenv.config({ path: "./.env" });
 
@@ -90,8 +90,12 @@ class AdminModel {
       const _id = findUser._id;
       const role = findUser.role;
       const name = findUser.name;
+      let payload = { _id, role, name, email };
+      if (findUser.role === "AGENT") {
+        payload.admin_id = findUser.admin_id;
+      }
 
-      const jwtToken = await signJwt({ _id, role, name, email });
+      const jwtToken = await signJwt(payload);
 
       return res.status(200).json({
         status: true,
@@ -401,7 +405,11 @@ class AdminModel {
             $set: { otp: 0, expires: 0 },
           });
 
-          const jwtToken = await signJwt({ _id: user._id, email: user.email, role: user.role });
+          const jwtToken = await signJwt({
+            _id: user._id,
+            email: user.email,
+            role: user.role,
+          });
           return res.status(200).json({
             status: true,
             code: 200,
@@ -513,31 +521,57 @@ class AdminModel {
   }
 
   static async getAvgCallTime(req, res, next) {
-
     try {
-
       // Total Today Calls
       const currentDate = JSON.stringify(new Date()).split("T")[0].slice(1);
-      const incommingCallsToday = await CallDetail.countDocuments({ call_date: currentDate, type: "Inbound" });
-      const outgoingCallsToday = await CallDetail.countDocuments({ call_date: currentDate, type: "Outbound" });
-
+      const incommingCallsToday = await CallDetail.countDocuments({
+        call_date: currentDate,
+        type: "Inbound",
+      });
+      const outgoingCallsToday = await CallDetail.countDocuments({
+        call_date: currentDate,
+        type: "Outbound",
+      });
 
       // Total Calls
-      const incommingCalls = await CallDetail.countDocuments({ call_date: currentDate, type: "Inbound" });
-      const outgoingCalls = await CallDetail.countDocuments({ call_date: currentDate, type: "Outbound" });
+      const incommingCalls = await CallDetail.countDocuments({
+        call_date: currentDate,
+        type: "Inbound",
+      });
+      const outgoingCalls = await CallDetail.countDocuments({
+        call_date: currentDate,
+        type: "Outbound",
+      });
 
       // Missed Calls
-      const missedCalls = await CallDetail.countDocuments({ dial_status: "Diconnected", type: "Inbound" });
+      const missedCalls = await CallDetail.countDocuments({
+        dial_status: "Diconnected",
+        type: "Inbound",
+      });
 
       // Abandoned Calls
-      const abandonedCalls = await CallDetail.countDocuments({ dial_status: "Diconnected", type: "Outbound" });
+      const abandonedCalls = await CallDetail.countDocuments({
+        dial_status: "Diconnected",
+        type: "Outbound",
+      });
 
       // Reservation Calls
-      const reservationCalls = await CallDetail.countDocuments({ call_date: currentDate, department: "RESERVATION" });
-      const reservationIncommingCalls = await CallDetail.countDocuments({ call_date: currentDate, type: "Inbound", department: "RESERVATION" });
-      const reservationOutgoingCalls = await CallDetail.countDocuments({ call_date: currentDate, type: "Outbound", department: "RESERVATION" });
+      const reservationCalls = await CallDetail.countDocuments({
+        call_date: currentDate,
+        department: "RESERVATION",
+      });
+      const reservationIncommingCalls = await CallDetail.countDocuments({
+        call_date: currentDate,
+        type: "Inbound",
+        department: "RESERVATION",
+      });
+      const reservationOutgoingCalls = await CallDetail.countDocuments({
+        call_date: currentDate,
+        type: "Outbound",
+        department: "RESERVATION",
+      });
 
-      // 
+      //
 
       return res.status(200).json({
         status: true,
@@ -548,13 +582,13 @@ class AdminModel {
             type: "Calls Today",
             totalCalls: incommingCallsToday + outgoingCallsToday,
             Inbound: incommingCallsToday,
-            Outbound: outgoingCallsToday
+            Outbound: outgoingCallsToday,
           },
           {
             type: "Total Calls",
             totalCalls: incommingCalls + outgoingCalls,
             Inbound: incommingCalls,
-            Outbound: outgoingCalls
+            Outbound: outgoingCalls,
           },
           {
             type: "Missed Calls",
@@ -567,17 +601,15 @@ class AdminModel {
           {
             type: "Reservation Calls",
             reservationCalls: reservationCalls,
-            reservationIncommingCalls : reservationIncommingCalls,
-            reservationOutgoingCalls : reservationOutgoingCalls
-          }
-        ]
+            reservationIncommingCalls: reservationIncommingCalls,
+            reservationOutgoingCalls: reservationOutgoingCalls,
+          },
+        ],
       });
-
     } catch (error) {
       return next(new ErrorHandler(error.message, 500));
     }
   }
-
 
   static async verificationAdmin(req, res, next) {
     try {
