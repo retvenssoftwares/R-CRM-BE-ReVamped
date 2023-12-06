@@ -26,7 +26,6 @@ class AdminModel {
         });
       }
       let findUser = await User.findOne({ email }).lean();
-      console.log(findUser, "findUserfindUserfindUserfindUser");
       if (!findUser) {
         return res.status(410).json({
           status: false,
