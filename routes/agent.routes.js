@@ -12,6 +12,10 @@ router.get('/hotel_destination',verifyJwt,Agent.hotelDestinationList)
 router.get('/hotel_name',verifyJwt,Agent.hotelNameList)
 
 router.get('/pending_follow_up',verifyJwt,Agent.PendingFollowUp)
+router.get('/call_graph',verifyJwt,Agent.CallsBarGraph)
+router.get('/disposition_graph',verifyJwt,Agent.dispositionGraph)
+
+
 
 
 

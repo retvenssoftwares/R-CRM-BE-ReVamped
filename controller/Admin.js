@@ -179,6 +179,7 @@ class AdminModel {
 
   static async AddUser(req, res, next) {
     try {
+      console.log(req.authData.role,"req.authData.rolereq.authData.rolereq.authData.role")
       if (req.authData.role === "ADMIN") {
         let email = req.body.email;
         let name = req.body.name;

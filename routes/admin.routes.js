@@ -13,7 +13,6 @@ router.post('/login', AdminModel.loginAdmin);
 router.post('/forgot-password', AdminModel.ForgotPassword);
 router.post('/verify-otp', AdminModel.VerifyOtpBeforeResetPassword);
 router.post('/update-password',verifyJwt, AdminModel.UpdatePassword);
-router.post('/create_user', AdminModel.AddUser);
 router.get('/get_call',AdminModel.getAvgCallTime)
 router.post('/create_user',verifyJwt, AdminModel.AddUser);
 router.get('/get_disposition',AdminModel.getDisposition)
