@@ -305,7 +305,7 @@ class AgentModel {
     }
   }
 
-  static async TodayConversation(req, res, next) {
+  static async TodayConversions(req, res, next) {
     try {
       let condition = [
         {
@@ -322,18 +322,37 @@ class AgentModel {
         },
         {
           $lookup: {
-            from: "guests",
-            localField: "_id",
-            foreignField: "unit_id",
-            as: "chapter",
+            from: "guest_details",
+            localField: "guest_id",
+            foreignField: "_id",
+            as: "guest",
           },
         },
         {
-          $addFields: {
-            no_of_chapter: { $count: "$chapter" },
+          $unwind: "$guest",
+        },
+        {
+          $project: {
+            hotel_name: 1,
+            guest_name: "$guest.guest_first_name",
+            guest_last_name: "$guest.guest_last_name",
+          },
+        },
+        {
+          $sort: {
+            _id: -1,
           },
         },
       ];
+
+      if (req.query.hotel_name) {
+        let hotelName = req.query.hotel_name.replaceAll("_", " ");
+        condition.unshift({
+          $match: {
+            hotel_name: hotelName,
+          },
+        });
+      }
 
       let findCall = await callDetails.aggregate(condition);
 
@@ -342,6 +361,125 @@ class AgentModel {
         code: 200,
         message: "Details....",
         data: findCall,
+      });
+    } catch (error) {
+      return res.status(500).json({
+        status: false,
+        code: 500,
+        message: error.message,
+      });
+    }
+  }
+
+  static async PendingFollowUp(req, res, next) {
+    try {
+      let condition = [
+        {
+          $match: {
+            $and: [
+              {
+                agent_id: new mongoose.Types.ObjectId(req.authData._id),
+              },
+              {
+                call_date: JSON.stringify(new Date()).split("T")[0].slice(1),
+              },
+            ],
+          },
+        },
+        {
+          $lookup: {
+            from: "guest_details",
+            localField: "guest_id",
+            foreignField: "_id",
+            as: "guest",
+          },
+        },
+        {
+          $unwind: "$guest",
+        },
+        {
+          $project: {
+            hotel_name: 1,
+            guest_name: "$guest.guest_first_name",
+            guest_last_name: "$guest.guest_last_name",
+          },
+        },
+        {
+          $sort: {
+            _id: -1,
+          },
+        },
+      ];
+
+      if (req.query.hotel_name) {
+        condition.unshift({
+          $match: {
+            hotel_name: req.query.hotel_name,
+          },
+        });
+      }
+
+      let findCall = await callDetails.aggregate(condition);
+
+      return res.status(200).json({
+        status: true,
+        code: 200,
+        message: "Details....",
+        data: findCall,
+      });
+    } catch (error) {
+      return res.status(500).json({
+        status: false,
+        code: 500,
+        message: error.message,
+      });
+    }
+  }
+
+  static async dispositionGraph(req, res, next) {
+    try {
+      return res.status(200).json({
+        status: true,
+        code: 200,
+        message: "Details....",
+        data: findCall,
+      });
+    } catch (error) {
+      return res.status(500).json({
+        status: false,
+        code: 500,
+        message: error.message,
+      });
+    }
+  }
+
+  static async agentCalls(req, res, next) {
+    try {
+      let condition = [
+        {
+          $match: {
+            agent_id: new mongoose.Types.ObjectId(req.authData._id),
+          },
+        },
+      ];
+
+      if(req.query.missed){
+        condition.push({$match:{
+            dial_status:"Missed"
+        }})
+      }
+
+      if(req.query.abandoned){
+        condition.push({$match:{
+            dial_status:"Rejected"
+        }})
+      }
+      let findCalls = await callDetails.aggregate(condition);
+      return res.status(200).json({
+        status: true,
+        code: 200,
+        message: "Details....",
+        data: findCalls,
       });
     } catch (error) {
       return res.status(500).json({
