@@ -989,6 +989,71 @@ class AdminModel {
       return next(new ErrorHandler(error.message, 500));
     }
   }
+
+  static async TodayPerFormer(req, res, next) {
+    try {
+      const admin_id = req.authData?.admin_id || "656f0c455589a45cbf4a1f51";
+      let pipeline = [
+        {
+          $match: {
+            call_date: JSON.stringify(new Date()).split("T")[0].slice(1),
+          },
+        },
+        {
+          $match: {
+            admin_id : new mongoose.Types.ObjectId(admin_id),
+          },
+        },
+        {
+          $match: {
+            department : "RESERVATION",
+          },
+        },
+        {
+          $group : {
+            _id : "$admin_id",
+            count : {$sum : 1}
+          }
+        },
+        {
+          $lookup: {
+            from: "users",
+            localField: "_id",
+            foreignField: "_id",
+            as: "user"
+          }
+        },
+        {
+          $unwind: "$user"
+        },
+        {
+          $project : {
+            name : "$user.name",
+            count : 1
+          }
+        }
+      ];
+
+      if (req.query.hotel_name) {
+        pipeline.unshift({
+          $match: {
+            hotel_name: req.query.hotel_name
+          }
+        })
+      }
+
+      const data = await CallDetail.aggregate(pipeline);
+
+      return res.status(200).json({
+        status: true,
+        code: 200,
+        message: "Data Fetched successfully",
+        data: data
+      });
+    } catch (error) {
+      return next(new ErrorHandler(error.message, 500));
+    }
+  }
 }
 
 export default AdminModel;
