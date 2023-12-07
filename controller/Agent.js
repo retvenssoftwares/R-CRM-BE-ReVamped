@@ -3,6 +3,7 @@ import callDetails from "../model/callDetails.js";
 // import Guest from '../model/Guest.js'
 import User from "../model/User.js";
 import guestDetail from "../model/Guest.js";
+import PauseCall from "../model/PauseCall.js"
 
 import mongoose from "mongoose";
 import { randomString } from "../middleware/custom.js";
@@ -140,7 +141,7 @@ class AgentModel {
         last_support_by,
         hang_up_by,
         arrival_date,
-        reservationIds : randomString(7),
+        reservationIds: randomString(7),
         departure_date,
         purpose_of_travel,
         remark,
@@ -573,6 +574,39 @@ class AgentModel {
         message: error.message,
       });
     }
+  }
+
+
+  static async Pause(req, res, next) {
+    const add = await PauseCall.create({
+      agent_id: req.body.agent_id,
+      pause_reason: req.body.pause_reason,
+      pause_time: req.body.pause_time,
+      resume_time: req.body.resume_time
+    })
+
+    await add.save()
+
+    return res.status(200).json({
+      status: true,
+      code: 200,
+      data: "Pause reasons added..",
+    });
+
+  }
+
+  static async GetPauseCall(req,res,next) {
+    const findPause = await PauseCall.find({agent_id:req.authData._id}).lean()
+    findPause.reverse()
+    if(!findPause){
+        return res.status(200).json({message : "Data not found"})
+    }
+
+    return res.status(200).json({
+      status: true,
+      code: 200,
+      data: findPause,
+    });
   }
 }
 
