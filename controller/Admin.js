@@ -1265,6 +1265,42 @@ class AdminModel {
       return next(new ErrorHandler(error.message, 500));
     }
   }
+
+  static async CallDetailAll(req, res, next) {
+    try {
+      let condition = [
+        {
+          $match: {
+            admin_id: new mongoose.Types.ObjectId(req.authData._id),
+          },
+        },
+      ];
+
+      if (req.query.type) {
+        condition.push({
+          $match: {
+            type:req.query.type,
+          },
+        });
+      }
+     
+      let findCalls = await CallDetail.aggregate(condition);
+      return res.status(200).json({
+        status: true,
+        code: 200,
+        message: "Details....",
+        data: findCalls,
+      });
+    } catch (error) {
+      return res.status(500).json({
+        status: false,
+        code: 500,
+        message: error.message,
+      });
+    }
+  }
+  
+
 }
 
 export default AdminModel;
