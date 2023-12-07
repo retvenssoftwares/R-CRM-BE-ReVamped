@@ -179,7 +179,7 @@ class AdminModel {
 
   static async AddUser(req, res, next) {
     try {
-      console.log(req.authData.role,"req.authData.rolereq.authData.rolereq.authData.role")
+      console.log(req.authData.role, "req.authData.rolereq.authData.rolereq.authData.role")
       if (req.authData.role === "ADMIN") {
         let email = req.body.email;
         let name = req.body.name;
@@ -826,8 +826,11 @@ class AdminModel {
           firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate() - i * 7 - currentDate.getDay());
           lastDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate() - i * 7 - currentDate.getDay() + 6, 23, 59, 59, 999);
         } else if (req.query.type === 'DAYS') {
-          firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate() - i);
-          lastDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate() - i, 23, 59, 59, 999);
+          // firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate() - i);
+          lastDayOfMonth = new Date(new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate() - i, 23, 59, 59, 999).setUTCHours(11, 59, 59, 0));
+          firstDayOfMonth = new Date(new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate() - i).setUTCHours(11, 59, 59, 0));
+
+
         } else {
           firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
           lastDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() - i + 1, 0);
@@ -844,7 +847,7 @@ class AdminModel {
             $match: {
               $and: [
                 {
-                  "call_date": { $gte: JSON.stringify(firstDayOfMonth).split("T")[0].slice(1) },
+                  "call_date": { $gt: JSON.stringify(firstDayOfMonth).split("T")[0].slice(1) },
                 },
                 {
                   "call_date": { $lte: JSON.stringify(lastDayOfMonth).split("T")[0].slice(1) },
