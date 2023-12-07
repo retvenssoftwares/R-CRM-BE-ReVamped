@@ -25,7 +25,7 @@ class GuestDeatils {
         return res.status(200).json({
             success: true,
             code: 200,
-            data: findCalls
+            data: findCalls.reverse()
         });
 
     }
@@ -47,6 +47,8 @@ class GuestDeatils {
         });
 
     }
+
+
 }
 
 export default GuestDeatils

@@ -1,6 +1,7 @@
 import express from 'express'
 import Agent from '../controller/Agent.js';
 import { verifyJwt } from '../middleware/auth.js';
+import AgentModel from '../controller/Agent.js';
 // import {verifyJwt} from '../middleware/auth.js'
 const router = express.Router();
 
@@ -14,6 +15,9 @@ router.get('/hotel_name',verifyJwt,Agent.hotelNameList)
 router.get('/pending_follow_up',verifyJwt,Agent.PendingFollowUp)
 router.get('/call_graph',verifyJwt,Agent.CallsBarGraph)
 router.get('/disposition_graph',verifyJwt,Agent.dispositionGraph)
+router.post("/pause_calls",verifyJwt,AgentModel.Pause)
+router.get("/get_pause_call",verifyJwt,AgentModel.GetPauseCall)
+router.post("/logOut",verifyJwt,AgentModel.logOut)
 
 
 

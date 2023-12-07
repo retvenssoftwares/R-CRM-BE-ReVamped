@@ -8,7 +8,7 @@ import PauseCall from "../model/PauseCall.js";
 import mongoose from "mongoose";
 import { randomString } from "../middleware/custom.js";
 import Disposition from "../model/Disposition.js";
-import { formatTime } from "../utils/formattime.js";
+import log_in_log_out_time from "../model/LoginAndLogOut.js"
 class AgentModel {
   static async GuestInfo(req, res, next) {
     const { phone_number } = req.body;
@@ -124,10 +124,17 @@ class AgentModel {
         special_occassion,
       } = req.body;
 
+    
+      let hotel_destination = ''
+      if(req.body.hotel_destination){
+         hotel_destination =  req?.body?.hotel_destination.toUpperCase()
+
+      }
+
       let newCalls = await callDetails.create({
         agent_id,
         guest_id,
-        call_date,
+        call_date : JSON.stringify(new Date()).split("T")[0].slice(1),
         caller_type,
         start_time,
         end_time,
@@ -147,10 +154,12 @@ class AgentModel {
         purpose_of_travel,
         remark,
         department,
+        hotel_destination,
         disposition,
         special_occassion,
-        hotel_destination: req.body.hotel_destination.toUpperCase(),
       });
+
+ 
       return res.status(200).json({
         status: true,
         code: 200,
@@ -958,6 +967,62 @@ class AgentModel {
       return next(new ErrorHandler(error.message, 500));
     }
   }
+
+
+  static async logOut(req, res, next) {
+    const {password, log_out_time } = req.body
+    const email = req.authData.email
+    console.log(email)
+    if (!email && !password) {
+      return res.status(422).json({
+        status: false,
+        code: 422,
+        message: "Please fill all the required field",
+      });
+    }
+    let findUser = await User.findOne({ email }).lean();
+
+    if (!findUser) {
+      return res.status(410).json({
+        status: false,
+        code: 410,
+        message: "Email did not match!!",
+      });
+    }
+    let validPassword = await bcryptjs.compare(password, findUser.password);
+    if (!validPassword) {
+      return res.status(410).json({
+        status: false,
+        code: 410,
+        message: "Password did not match!!",
+      });
+    }
+
+
+    const logout = await log_in_log_out_time.updateOne(
+      { agent_id: findUser._id },
+      {
+        $push: {
+          log_in_log_out_time: {
+            $each: [{ log_in_time: log_out_time }],
+            $position: 0,
+          },
+        },
+      },
+      { upsert: true }
+    );
+
+   if(logout){
+    return res.status(200).json({
+      status: true,
+      code: 200,
+      message: "logout successfully",
+    });
+   }
+
+
+  }
+
 }
 
 export default AgentModel;
