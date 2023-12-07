@@ -12,6 +12,7 @@ import login_logout from "../model/LoginAndLogOut.js"
 import CallDetail from "../model/callDetails.js"
 import mongoose from "mongoose";
 import dispositions from "../model/Disposition.js"
+import { formatTime } from "../utils/formattime.js";
 
 dotenv.config({ path: "./.env" });
 
@@ -179,7 +180,7 @@ class AdminModel {
 
   static async AddUser(req, res, next) {
     try {
-      console.log(req.authData.role,"req.authData.rolereq.authData.rolereq.authData.role")
+      console.log(req.authData.role, "req.authData.rolereq.authData.rolereq.authData.role")
       if (req.authData.role === "ADMIN") {
         let email = req.body.email;
         let name = req.body.name;
@@ -636,52 +637,54 @@ class AdminModel {
       // No Answer
       const noAnswer = await CallDetail.countDocuments({ admin_id: new mongoose.Types.ObjectId(admin_Id), dial_status: "Diconnected", type: "Inbound" });
 
-      // Average number of min
-      // const avgCallTimeIncoming = await CallDetail.aggregate([
-      //   {
-      //     $match: {
-      //       admin_id : new mongoose.Types.ObjectId(admin_Id),
-      //       type: "Inbound",
-      //       talktime: { $exists: true },
-      //     },
-      //   },
-      //   {
-      //     $group: {
-      //       _id: null,
-      //       avgCallTime: { $avg: "$talktime" },
-      //     },
-      //   },
-      // ]);
+      //Average number of min
+      const CallTimeIncoming = await CallDetail.aggregate([
+        {
+          $match: {
+            admin_id: new mongoose.Types.ObjectId(admin_Id),
+            type: "Inbound",
+            talktime: { $exists: true },
+          },
+        }
+      ]);
+      const CallTimeOutgoing = await CallDetail.aggregate([
+        {
+          $match: {
+            admin_id: new mongoose.Types.ObjectId(admin_Id),
+            type: "Outbound",
+            talktime: { $exists: true },
+          },
+        }
+      ]);
 
-      // const avgCallTimeOutgoing = await CallDetail.aggregate([
-      //   {
-      //     $match: {
-      //       admin_id : new mongoose.Types.ObjectId(admin_Id),
-      //       type: "Outbound",
-      //       talktime: { $exists: true },
-      //     },
-      //   },
-      //   {
-      //     $group: {
-      //       _id: null,
-      //       avgCallTime: { $avg: "$talktime" },
-      //     },
-      //   },
-      // ]);
+      let sumCallTimeOutgoing = 0;
+      await Promise.all(CallTimeOutgoing.map((data) => {
+        if(data.talktime){
+          sumCallTimeOutgoing = sumCallTimeOutgoing + parseInt(data.talktime.split(":")[0])*3600 + parseInt(data.talktime.split(":")[1])*60 + parseInt(data.talktime.split(":")[2]);
+        }
+      }))
 
+      let sumCallTimeIncoming = 0;
+      await Promise.all(CallTimeIncoming.map((data) => {
+        console.log(data);
+        if(data.talktime){
+          sumCallTimeIncoming = sumCallTimeIncoming + parseInt(data.talktime.split(":")[0])*3600 + parseInt(data.talktime.split(":")[1])*60 + parseInt(data.talktime.split(":")[2]);
+        }
+      }))
 
-
+      const avgCallTimeIncoming = sumCallTimeIncoming/CallTimeIncoming.length;
+      const avgCallTimeOutgoing = sumCallTimeOutgoing/CallTimeOutgoing.length;
 
       return res.status(200).json({
         status: true,
         code: 200,
         message: "TODO",
         data: [
-          // {
-          //   type: "Average Call Time",
-          //   avgCallTimeIncoming: convertMinutesToTime(avgCallTimeIncoming[0]?.avgCallTime || 0),
-          //   avgCallTimeOutgoing: convertMinutesToTime(avgCallTimeOutgoing[0]?.avgCallTime || 0),
-          // },
+          {
+            type: "Average Call Time",
+            avgCallTimeOutgoing: formatTime(avgCallTimeOutgoing),
+            avgCallTimeIncoming: formatTime(avgCallTimeIncoming),
+          },
           {
             type: "Calls Today",
             totalCalls: incommingCallsToday + outgoingCallsToday,
@@ -719,8 +722,10 @@ class AdminModel {
             reservationOutgoingCalls: reservationOutgoingCalls,
           },
         ],
+        
       });
     } catch (error) {
+      console.log(error);
       return next(new ErrorHandler(error.message, 500));
     }
   }
@@ -826,8 +831,11 @@ class AdminModel {
           firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate() - i * 7 - currentDate.getDay());
           lastDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate() - i * 7 - currentDate.getDay() + 6, 23, 59, 59, 999);
         } else if (req.query.type === 'DAYS') {
-          firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate() - i);
-          lastDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate() - i, 23, 59, 59, 999);
+          // firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate() - i);
+          lastDayOfMonth = new Date(new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate() - i, 23, 59, 59, 999).setUTCHours(11, 59, 59, 0));
+          firstDayOfMonth = new Date(new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate() - i).setUTCHours(11, 59, 59, 0));
+
+
         } else {
           firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
           lastDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() - i + 1, 0);
@@ -844,7 +852,7 @@ class AdminModel {
             $match: {
               $and: [
                 {
-                  "call_date": { $gte: JSON.stringify(firstDayOfMonth).split("T")[0].slice(1) },
+                  "call_date": { $gt: JSON.stringify(firstDayOfMonth).split("T")[0].slice(1) },
                 },
                 {
                   "call_date": { $lte: JSON.stringify(lastDayOfMonth).split("T")[0].slice(1) },
