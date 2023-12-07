@@ -8,10 +8,11 @@ import { signJwt } from "../middleware/auth.js";
 import { sendMail } from "../utils/sendMail.js";
 import ErrorHandler from "../utils/errorHandler.js";
 import callDetail from "../model/callDetails.js";
-import login_logout from "../model/LoginAndLogOut.js"
-import CallDetail from "../model/callDetails.js"
+import login_logout from "../model/LoginAndLogOut.js";
+import CallDetail from "../model/callDetails.js";
 import mongoose from "mongoose";
-import dispositions from "../model/Disposition.js"
+import dispositions from "../model/Disposition.js";
+import { formatTime } from "../utils/formattime.js";
 
 dotenv.config({ path: "./.env" });
 
@@ -116,7 +117,6 @@ class AdminModel {
       }
 
       const jwtToken = await signJwt(payload);
-
 
 
 
@@ -547,104 +547,204 @@ class AdminModel {
     }
   }
 
-  static async getAvgCallTime(req, res, next) {
-
-    try {
-
-      let findCall = await callDetail.find({})
-
-    } catch {
-
-    }
-  }
-
   static async getAgentStats(req, res, next) {
     try {
-
       // Admin Id from AuthData
       const admin_Id = req.authData?._id;
 
       // Total Today Calls
       const currentDate = JSON.stringify(new Date()).split("T")[0].slice(1);
-      const incommingCallsToday = await CallDetail.countDocuments({ admin_id: new mongoose.Types.ObjectId(admin_Id), call_date: currentDate, type: "Inbound" });
-      const outgoingCallsToday = await CallDetail.countDocuments({ admin_id: new mongoose.Types.ObjectId(admin_Id), call_date: currentDate, type: "Outbound" });
-
+      const incommingCallsToday = await CallDetail.countDocuments({
+        admin_id: new mongoose.Types.ObjectId(admin_Id),
+        call_date: currentDate,
+        type: "Inbound",
+      });
+      const outgoingCallsToday = await CallDetail.countDocuments({
+        admin_id: new mongoose.Types.ObjectId(admin_Id),
+        call_date: currentDate,
+        type: "Outbound",
+      });
 
       // Total Calls
-      const incommingCalls = await CallDetail.countDocuments({ admin_id: new mongoose.Types.ObjectId(admin_Id), type: "Inbound" });
-      const outgoingCalls = await CallDetail.countDocuments({ admin_id: new mongoose.Types.ObjectId(admin_Id), type: "Outbound" });
+      const incommingCalls = await CallDetail.countDocuments({
+        admin_id: new mongoose.Types.ObjectId(admin_Id),
+        type: "Inbound",
+      });
+      const outgoingCalls = await CallDetail.countDocuments({
+        admin_id: new mongoose.Types.ObjectId(admin_Id),
+        type: "Outbound",
+      });
 
       // Missed Calls
-      const missedCalls = await CallDetail.countDocuments({ admin_id: new mongoose.Types.ObjectId(admin_Id), dial_status: "Diconnected", type: "Inbound" });
+      const missedCalls = await CallDetail.countDocuments({
+        admin_id: new mongoose.Types.ObjectId(admin_Id),
+        dial_status: "Diconnected",
+        type: "Inbound",
+      });
 
       // Abandoned Calls
-      const abandonedCalls = await CallDetail.countDocuments({ admin_id: new mongoose.Types.ObjectId(admin_Id), dial_status: "Diconnected", type: "Outbound" });
+      const abandonedCalls = await CallDetail.countDocuments({
+        admin_id: new mongoose.Types.ObjectId(admin_Id),
+        dial_status: "Diconnected",
+        type: "Outbound",
+      });
 
       // Reservation Calls Today
-      const reservationCallsToday = await CallDetail.countDocuments({ admin_id: new mongoose.Types.ObjectId(admin_Id), call_date: currentDate, department: "RESERVATION" });
-      const reservationIncommingCallsToday = await CallDetail.countDocuments({ admin_id: new mongoose.Types.ObjectId(admin_Id), call_date: currentDate, type: "Inbound", department: "RESERVATION" });
-      const reservationOutgoingCallsToday = await CallDetail.countDocuments({ admin_id: new mongoose.Types.ObjectId(admin_Id), call_date: currentDate, type: "Outbound", department: "RESERVATION" });
+      const reservationCallsToday = await CallDetail.countDocuments({
+        admin_id: new mongoose.Types.ObjectId(admin_Id),
+        call_date: currentDate,
+        department: "RESERVATION",
+      });
+      const reservationIncommingCallsToday = await CallDetail.countDocuments({
+        admin_id: new mongoose.Types.ObjectId(admin_Id),
+        call_date: currentDate,
+        type: "Inbound",
+        department: "RESERVATION",
+      });
+      const reservationOutgoingCallsToday = await CallDetail.countDocuments({
+        admin_id: new mongoose.Types.ObjectId(admin_Id),
+        call_date: currentDate,
+        type: "Outbound",
+        department: "RESERVATION",
+      });
 
       // Reservation Calls
-      const reservationCalls = await CallDetail.countDocuments({ admin_id: new mongoose.Types.ObjectId(admin_Id), department: "RESERVATION" });
-      const reservationIncommingCalls = await CallDetail.countDocuments({ admin_id: new mongoose.Types.ObjectId(admin_Id), type: "Inbound", department: "RESERVATION" });
-      const reservationOutgoingCalls = await CallDetail.countDocuments({ admin_id: new mongoose.Types.ObjectId(admin_Id), type: "Outbound", department: "RESERVATION" });
+      const reservationCalls = await CallDetail.countDocuments({
+        admin_id: new mongoose.Types.ObjectId(admin_Id),
+        department: "RESERVATION",
+      });
+      const reservationIncommingCalls = await CallDetail.countDocuments({
+        admin_id: new mongoose.Types.ObjectId(admin_Id),
+        type: "Inbound",
+        department: "RESERVATION",
+      });
+      const reservationOutgoingCalls = await CallDetail.countDocuments({
+        admin_id: new mongoose.Types.ObjectId(admin_Id),
+        type: "Outbound",
+        department: "RESERVATION",
+      });
 
       // No Answer
-      const noAnswer = await CallDetail.countDocuments({ admin_id: new mongoose.Types.ObjectId(admin_Id), dial_status: "Diconnected", type: "Inbound" });
+      const noAnswer = await CallDetail.countDocuments({
+        admin_id: new mongoose.Types.ObjectId(admin_Id),
+        dial_status: "Diconnected",
+        type: "Inbound",
+      });
 
-      // Average number of min
-      // const avgCallTimeIncoming = await CallDetail.aggregate([
-      //   {
-      //     $match: {
-      //       admin_id : new mongoose.Types.ObjectId(admin_Id),
-      //       type: "Inbound",
-      //       talktime: { $exists: true },
-      //     },
-      //   },
-      //   {
-      //     $group: {
-      //       _id: null,
-      //       avgCallTime: { $avg: "$talktime" },
-      //     },
-      //   },
-      // ]);
+      const totalReservation = await CallDetail.aggregate([
+        {
+          $match: {
+            admin_id: new mongoose.Types.ObjectId(admin_Id),
+            department: "RESERVATION",
+          },
+        },
+      ]);
 
-      // const avgCallTimeOutgoing = await CallDetail.aggregate([
-      //   {
-      //     $match: {
-      //       admin_id : new mongoose.Types.ObjectId(admin_Id),
-      //       type: "Outbound",
-      //       talktime: { $exists: true },
-      //     },
-      //   },
-      //   {
-      //     $group: {
-      //       _id: null,
-      //       avgCallTime: { $avg: "$talktime" },
-      //     },
-      //   },
-      // ]);
+      const totalClosedCalls = await CallDetail.aggregate([
+        {
+          $match: {
+            admin_id: new mongoose.Types.ObjectId(admin_Id),
+            department: "RESERVATION",
+          },
+        },
+        {
+          $lookup: {
+            from: "dispositions",
+            localField: "disposition",
+            foreignField: "_id",
+            as: "disposition_name",
+          },
+        },
+        {
+          $unwind: {
+            path: "$disposition_name",
+            preserveNullAndEmptyArrays: false,
+          },
+        },
+      ]);
 
+      let conversionRate = (totalClosedCalls / totalReservation) * 100;
 
+      //Average number of min
+      const CallTimeIncoming = await CallDetail.aggregate([
+        {
+          $match: {
+            admin_id: new mongoose.Types.ObjectId(admin_Id),
+            type: "Inbound",
+            talktime: { $exists: true },
+          },
+        },
+      ]);
+      const CallTimeOutgoing = await CallDetail.aggregate([
+        {
+          $match: {
+            admin_id: new mongoose.Types.ObjectId(admin_Id),
+            type: "Outbound",
+            talktime: { $exists: true },
+          },
+        },
+      ]);
 
+      const CallTimeTotal = await CallDetail.aggregate([
+        {
+          $match: {
+            admin_id: new mongoose.Types.ObjectId(admin_Id),
+
+            talktime: { $exists: true },
+          },
+        },
+      ]);
+
+      let sumCallTimeOutgoing = 0;
+      let totalTime = 0;
+
+      await Promise.all(
+        CallTimeOutgoing.map((data) => {
+          if (data.talktime) {
+            sumCallTimeOutgoing =
+              sumCallTimeOutgoing +
+              parseInt(data.talktime.split(":")[0]) * 3600 +
+              parseInt(data.talktime.split(":")[1]) * 60 +
+              parseInt(data.talktime.split(":")[2]);
+          }
+        })
+      );
+
+      await Promise.all(
+        CallTimeTotal.map((data) => {
+          if (data.talktime) {
+            totalTime =
+              totalTime +
+              parseInt(data.talktime.split(":")[0]) * 3600 +
+              parseInt(data.talktime.split(":")[1]) * 60 +
+              parseInt(data.talktime.split(":")[2]);
+          }
+        })
+      );
+
+      let sumCallTimeIncoming = 0;
+      await Promise.all(
+        CallTimeIncoming.map((data) => {
+          console.log(data);
+          if (data.talktime) {
+            sumCallTimeIncoming =
+              sumCallTimeIncoming +
+              parseInt(data.talktime.split(":")[0]) * 3600 +
+              parseInt(data.talktime.split(":")[1]) * 60 +
+              parseInt(data.talktime.split(":")[2]);
+          }
+        })
+      );
+
+      const avgCallTimeIncoming = sumCallTimeIncoming / CallTimeIncoming.length;
+      const avgCallTimeOutgoing = sumCallTimeOutgoing / CallTimeOutgoing.length;
+      const totalTimee = totalTime / CallTimeTotal.length;
 
       return res.status(200).json({
         status: true,
         code: 200,
         message: "TODO",
         data: [
-          // {
-          //   type: "Average Call Time",
-          //   avgCallTimeIncoming: convertMinutesToTime(avgCallTimeIncoming[0]?.avgCallTime || 0),
-          //   avgCallTimeOutgoing: convertMinutesToTime(avgCallTimeOutgoing[0]?.avgCallTime || 0),
-          // },
-          {
-            type: "Calls Today",
-            totalCalls: incommingCallsToday + outgoingCallsToday,
-            Inbound: incommingCallsToday,
-            Outbound: outgoingCallsToday,
-          },
           {
             type: "Total Calls",
             totalCalls: incommingCalls + outgoingCalls,
@@ -652,17 +752,30 @@ class AdminModel {
             Outbound: outgoingCalls,
           },
           {
+            type: "Average Call Time",
+            avgCallTimeOutgoing: formatTime(avgCallTimeOutgoing),
+            avgCallTimeIncoming: formatTime(avgCallTimeIncoming),
+          },
+          {
+            type: "Average Wrap Time",
+            totalTime: formatTime(totalTimee),
+          },
+          {
+            type: "Conversion Rate",
+            noAnswer: conversionRate,
+          },
+          {
+            type: "Calls Today",
+            totalCalls: incommingCallsToday + outgoingCallsToday,
+            Inbound: incommingCallsToday,
+            Outbound: outgoingCallsToday,
+          },
+
+          {
             type: "Missed Calls",
             missedCalls: missedCalls,
           },
-          {
-            type: "Abandoned Calls",
-            abandonedCalls: abandonedCalls,
-          },
-          {
-            type: "No Answer",
-            noAnswer: noAnswer,
-          },
+
           {
             type: "Reservation Calls Today",
             reservationCallsToday: reservationCallsToday,
@@ -675,9 +788,18 @@ class AdminModel {
             reservationIncommingCallsToday: reservationIncommingCallsToday,
             reservationOutgoingCalls: reservationOutgoingCalls,
           },
+          {
+            type: "Abandoned Calls",
+            abandonedCalls: abandonedCalls,
+          },
+          {
+            type: "No Answer",
+            noAnswer: noAnswer,
+          },
         ],
       });
     } catch (error) {
+      console.log(error);
       return next(new ErrorHandler(error.message, 500));
     }
   }
@@ -776,20 +898,64 @@ class AdminModel {
         let firstDayOfMonth;
         let lastDayOfMonth;
 
-        if (req.query.type === 'MONTHLY') {
-          firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
-          lastDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() - i + 1, 0);
-        } else if (req.query.type === 'WEEKLY') {
-          firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate() - i * 7 - currentDate.getDay());
-          lastDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate() - i * 7 - currentDate.getDay() + 6, 23, 59, 59, 999);
-        } else if (req.query.type === 'DAYS') {
-          firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate() - i);
-          lastDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate() - i, 23, 59, 59, 999);
+        if (req.query.type === "MONTHLY") {
+          firstDayOfMonth = new Date(
+            currentDate.getFullYear(),
+            currentDate.getMonth() - i,
+            1
+          );
+          lastDayOfMonth = new Date(
+            currentDate.getFullYear(),
+            currentDate.getMonth() - i + 1,
+            0
+          );
+        } else if (req.query.type === "WEEKLY") {
+          firstDayOfMonth = new Date(
+            currentDate.getFullYear(),
+            currentDate.getMonth(),
+            currentDate.getDate() - i * 7 - currentDate.getDay()
+          );
+          lastDayOfMonth = new Date(
+            currentDate.getFullYear(),
+            currentDate.getMonth(),
+            currentDate.getDate() - i * 7 - currentDate.getDay() + 6,
+            23,
+            59,
+            59,
+            999
+          );
+        } else if (req.query.type === "DAYS") {
+          // firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate() - i);
+          lastDayOfMonth = new Date(
+            new Date(
+              currentDate.getFullYear(),
+              currentDate.getMonth(),
+              currentDate.getDate() - i,
+              23,
+              59,
+              59,
+              999
+            ).setUTCHours(11, 59, 59, 0)
+          );
+          firstDayOfMonth = new Date(
+            new Date(
+              currentDate.getFullYear(),
+              currentDate.getMonth(),
+              currentDate.getDate() - i
+            ).setUTCHours(11, 59, 59, 0)
+          );
         } else {
-          firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
-          lastDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() - i + 1, 0);
+          firstDayOfMonth = new Date(
+            currentDate.getFullYear(),
+            currentDate.getMonth() - i,
+            1
+          );
+          lastDayOfMonth = new Date(
+            currentDate.getFullYear(),
+            currentDate.getMonth() - i + 1,
+            0
+          );
         }
-
 
         let pipeline = [
           {
@@ -801,10 +967,14 @@ class AdminModel {
             $match: {
               $and: [
                 {
-                  "call_date": { $gte: JSON.stringify(firstDayOfMonth).split("T")[0].slice(1) },
+                  call_date: {
+                    $gt: JSON.stringify(firstDayOfMonth).split("T")[0].slice(1),
+                  },
                 },
                 {
-                  "call_date": { $lte: JSON.stringify(lastDayOfMonth).split("T")[0].slice(1) },
+                  call_date: {
+                    $lte: JSON.stringify(lastDayOfMonth).split("T")[0].slice(1),
+                  },
                 },
               ],
             },
@@ -812,67 +982,73 @@ class AdminModel {
           {
             $group: {
               _id: null,
-              count: { $sum: 1 }
-            }
-          }
-        ]
+              count: { $sum: 1 },
+            },
+          },
+        ];
 
         if (req.query.hotel_destination) {
           pipeline.unshift({
             $match: {
-              "hotel_destination": req.query.hotel_destination
-            }
-          })
+              hotel_destination: req.query.hotel_destination,
+            },
+          });
         }
 
         if (req.query.hotel_name) {
           pipeline.unshift({
             $match: {
-              hotel_name: req.query.hotel_name
-            }
-          })
+              hotel_name: req.query.hotel_name,
+            },
+          });
         }
         const d = await CallDetail.aggregate(pipeline);
-        if (req.query.type === 'WEEKLY') {
+        if (req.query.type === "WEEKLY") {
           result.push({
-            type: lastDayOfMonth.toLocaleString('default', { month: 'short', day: "numeric", year: 'numeric' }),
-            count: d[0]?.count || 0
-          })
-        } else if (req.query.type === 'DAYS') {
+            type: lastDayOfMonth.toLocaleString("default", {
+              month: "short",
+              day: "numeric",
+              year: "numeric",
+            }),
+            count: d[0]?.count || 0,
+          });
+        } else if (req.query.type === "DAYS") {
           result.push({
-            type: lastDayOfMonth.toLocaleString('default', { month: 'short', day: "numeric", year: 'numeric' }),
-            count: d[0]?.count || 0
-          })
+            type: lastDayOfMonth.toLocaleString("default", {
+              month: "short",
+              day: "numeric",
+              year: "numeric",
+            }),
+            count: d[0]?.count || 0,
+          });
         } else {
           result.push({
-            type: lastDayOfMonth.toLocaleString('default', { month: 'short' }),
-            count: d[0]?.count || 0
-          })
+            type: lastDayOfMonth.toLocaleString("default", { month: "short" }),
+            count: d[0]?.count || 0,
+          });
         }
-
       }
 
       return res.status(200).json({
         status: true,
         code: 200,
         message: "Data Fetched successfully",
-        data: result.reverse()
+        data: result.reverse(),
       });
     } catch (error) {
       return next(new ErrorHandler(error.message, 500));
     }
   }
 
-
   static async getDisposition(req, res, next) {
-    let findDisposition = await dispositions.find({})
+    let findDisposition = await dispositions.find({});
 
     if (!findDisposition) {
       return res.status(401).json({
         status: false,
         code: 401,
         message: "Data not found",
-        data: result.reverse()
+        data: result.reverse(),
       });
     }
 
@@ -880,7 +1056,7 @@ class AdminModel {
       status: true,
       code: 200,
       message: "Data Fetched successfully",
-      data: findDisposition
+      data: findDisposition,
     });
   }
   static async CallsCurrentDate(req, res, next) {
@@ -902,54 +1078,54 @@ class AdminModel {
             from: "guest_details",
             localField: "guest_id",
             foreignField: "_id",
-            as: "guest"
-          }
+            as: "guest",
+          },
         },
         {
-          $unwind: "$guest"
+          $unwind: "$guest",
         },
         {
           $addFields: {
             startDate: {
               $dateFromString: {
-                dateString: "$arrival_date"
-              }
+                dateString: "$arrival_date",
+              },
             },
             endDate: {
               $dateFromString: {
-                dateString: "$departure_date"
-              }
-            }
-          }
+                dateString: "$departure_date",
+              },
+            },
+          },
         },
         {
           $addFields: {
             noOfNights: {
               $divide: [
                 {
-                  $subtract: ["$endDate", "$startDate"]
+                  $subtract: ["$endDate", "$startDate"],
                 },
-                1000 * 60 * 60 * 24
-              ]
-            }
-          }
+                1000 * 60 * 60 * 24,
+              ],
+            },
+          },
         },
         {
           $project: {
             hotel_name: 1,
-            guest_first_name: '$guest.guest_first_name',
-            guest_last_name: '$guest.guest_last_name',
-            noOfNights: 1
-          }
-        }
+            guest_first_name: "$guest.guest_first_name",
+            guest_last_name: "$guest.guest_last_name",
+            noOfNights: 1,
+          },
+        },
       ];
 
       if (req.query.hotel_name) {
         pipeline.unshift({
           $match: {
-            hotel_name: req.query.hotel_name
-          }
-        })
+            hotel_name: req.query.hotel_name,
+          },
+        });
       }
 
       const data = await CallDetail.aggregate(pipeline);
@@ -958,7 +1134,7 @@ class AdminModel {
         status: true,
         code: 200,
         message: "Data Fetched successfully",
-        data: data
+        data: data,
       });
     } catch (error) {
       return next(new ErrorHandler(error.message, 500));
@@ -982,34 +1158,34 @@ class AdminModel {
         {
           $group: {
             _id: "$admin_id",
-            count: { $sum: 1 }
-          }
+            count: { $sum: 1 },
+          },
         },
         {
           $lookup: {
             from: "users",
             localField: "_id",
             foreignField: "_id",
-            as: "user"
-          }
+            as: "user",
+          },
         },
         {
-          $unwind: "$user"
+          $unwind: "$user",
         },
         {
           $project: {
             name: "$user.name",
-            count: 1
-          }
-        }
+            count: 1,
+          },
+        },
       ];
 
       if (req.query.hotel_name) {
         pipeline.unshift({
           $match: {
-            hotel_name: req.query.hotel_name
-          }
-        })
+            hotel_name: req.query.hotel_name,
+          },
+        });
       }
 
       const data = await CallDetail.aggregate(pipeline);
@@ -1018,7 +1194,7 @@ class AdminModel {
         status: true,
         code: 200,
         message: "Data Fetched successfully",
-        data: data
+        data: data,
       });
     } catch (error) {
       return next(new ErrorHandler(error.message, 500));
@@ -1047,34 +1223,34 @@ class AdminModel {
         {
           $group: {
             _id: "$admin_id",
-            count: { $sum: 1 }
-          }
+            count: { $sum: 1 },
+          },
         },
         {
           $lookup: {
             from: "users",
             localField: "_id",
             foreignField: "_id",
-            as: "user"
-          }
+            as: "user",
+          },
         },
         {
-          $unwind: "$user"
+          $unwind: "$user",
         },
         {
           $project: {
             name: "$user.name",
-            count: 1
-          }
-        }
+            count: 1,
+          },
+        },
       ];
 
       if (req.query.hotel_name) {
         pipeline.unshift({
           $match: {
-            hotel_name: req.query.hotel_name
-          }
-        })
+            hotel_name: req.query.hotel_name,
+          },
+        });
       }
 
       const data = await CallDetail.aggregate(pipeline);
@@ -1083,7 +1259,7 @@ class AdminModel {
         status: true,
         code: 200,
         message: "Data Fetched successfully",
-        data: data
+        data: data,
       });
     } catch (error) {
       return next(new ErrorHandler(error.message, 500));

@@ -3,7 +3,7 @@ import callDetails from "../model/callDetails.js";
 // import Guest from '../model/Guest.js'
 import User from "../model/User.js";
 import guestDetail from "../model/Guest.js";
-import PauseCall from "../model/PauseCall.js"
+import PauseCall from "../model/PauseCall.js";
 
 import mongoose from "mongoose";
 import { randomString } from "../middleware/custom.js";
@@ -212,9 +212,12 @@ class AgentModel {
         ],
       });
 
-      let reservation_call = await callDetails.countDocuments({
-        department: "RESERVATION",
-      });
+      let reservation_call = await callDetails.countDocuments(
+        {
+          department: "RESERVATION",
+        },
+        { agent_id: new mongoose.Types.ObjectId(req.authData._id) }
+      );
       let reservation_incoming_call = await callDetails.countDocuments({
         $and: [
           { type: "Inbound" },
@@ -285,6 +288,43 @@ class AgentModel {
         ],
       });
 
+      const CallTimeIncoming = await callDetails.aggregate([
+        {
+          $match: {
+             agent_id: new mongoose.Types.ObjectId(req.authData._id), 
+            type: "Inbound",
+            talktime: { $exists: true },
+          },
+        }
+      ]);
+      const CallTimeOutgoing = await callDetails.aggregate([
+        {
+          $match: {
+            agent_id: new mongoose.Types.ObjectId(req.authData._id), 
+            type: "Outbound",
+            talktime: { $exists: true },
+          },
+        }
+      ]);
+
+      let sumCallTimeOutgoing = 0;
+      await Promise.all(CallTimeOutgoing.map((data) => {
+        if(data.talktime){
+          sumCallTimeOutgoing = sumCallTimeOutgoing + parseInt(data.talktime.split(":")[0])*3600 + parseInt(data.talktime.split(":")[1])*60 + parseInt(data.talktime.split(":")[2]);
+        }
+      }))
+
+      let sumCallTimeIncoming = 0;
+      await Promise.all(CallTimeIncoming.map((data) => {
+        console.log(data);
+        if(data.talktime){
+          sumCallTimeIncoming = sumCallTimeIncoming + parseInt(data.talktime.split(":")[0])*3600 + parseInt(data.talktime.split(":")[1])*60 + parseInt(data.talktime.split(":")[2]);
+        }
+      }))
+
+      const avgCallTimeIncoming = sumCallTimeIncoming/CallTimeIncoming.length;
+      const avgCallTimeOutgoing = sumCallTimeOutgoing/CallTimeOutgoing.length;
+
       let data1 = {
         total_call: total_call,
         total_incoming_call: total_incoming_call,
@@ -302,6 +342,9 @@ class AgentModel {
         total_missed_call: total_missed_call,
         no_answer: no_answer,
         abandoned: abandoned,
+        avgCallTimeIncoming:formatTime(avgCallTimeIncoming),
+        avgCallTimeOutgoing:formatTime(avgCallTimeOutgoing)
+
       };
 
       return res.status(200).json({
@@ -349,10 +392,37 @@ class AgentModel {
           $unwind: "$guest",
         },
         {
+          $addFields: {
+            startDate: {
+              $dateFromString: {
+                dateString: "$arrival_date"
+              }
+            },
+            endDate: {
+              $dateFromString: {
+                dateString: "$departure_date"
+              }
+            }
+          }
+        },
+        {
+          $addFields: {
+            noOfNights: {
+              $divide: [
+                {
+                  $subtract: ["$endDate", "$startDate"]
+                },
+                1000 * 60 * 60 * 24
+              ]
+            }
+          }
+        },
+        {
           $project: {
             hotel_name: 1,
             guest_name: "$guest.guest_first_name",
             guest_last_name: "$guest.guest_last_name",
+            noOfNights: 1
           },
         },
         {
@@ -430,22 +500,25 @@ class AgentModel {
       ];
 
       if (req.query.hotel_name) {
+        let hotelName = req.query.hotel_name.replaceAll("_", " ");
         condition.unshift({
           $match: {
-            hotel_name: req.query.hotel_name,
+            hotel_name: hotelName,
           },
         });
       }
 
       if (!req.query.disposition) {
+        let disposition = req.query.disposition.replaceAll("_", " ");
+
         condition.unshift({
           $match: {
             $or: [
               {
-                disposition: "Follow Up - Reservation",
+                disposition: disposition,
               },
               {
-                disposition: "Follow Up - No Reservation",
+                disposition: disposition,
               },
             ],
           },
@@ -499,7 +572,20 @@ class AgentModel {
               { call_date: { $gte: endDate } },
             ],
           },
-        });
+        }, {
+          $lookup: {
+            from: "users",
+            localField: "assigned_to",
+            foreignField: "_id",
+            as: "assigened_user",
+          },
+        },
+        {
+          $unwind: {
+            path: "$assigened_user",
+            preserveNullAndEmptyArrays: false,
+          },
+        },);
       }
 
       if (req.authData.role === "ADMIN") {
@@ -509,6 +595,15 @@ class AgentModel {
       } else if (req.authData.role === "AGENT") {
         condition.unshift({
           $match: { agent_id: new mongoose.Types.ObjectId(req.authData._id) },
+        });
+      }
+
+      if (req.query.hotel_name) {
+        let hotelName = req.query.hotel_name.replaceAll("_", " ");
+        condition.unshift({
+          $match: {
+            hotel_name: hotelName,
+          },
         });
       }
 
@@ -524,10 +619,12 @@ class AgentModel {
       await findDisposition.map(async (e) => {
         let findKeys = Object.keys(result).find((el) => {
           return el == e.name;
-        }) ? true : false ;
+        })
+          ? true
+          : false;
 
-        if(!findKeys){
-          result[e.name] = 0
+        if (!findKeys) {
+          result[e.name] = 0;
         }
       });
 
@@ -640,30 +737,30 @@ class AgentModel {
     }
   }
 
-
   static async Pause(req, res, next) {
     const add = await PauseCall.create({
       agent_id: req.body.agent_id,
       pause_reason: req.body.pause_reason,
       pause_time: req.body.pause_time,
-      resume_time: req.body.resume_time
-    })
+      resume_time: req.body.resume_time,
+    });
 
-    await add.save()
+    await add.save();
 
     return res.status(200).json({
       status: true,
       code: 200,
       data: "Pause reasons added..",
     });
-
   }
 
-  static async GetPauseCall(req,res,next) {
-    const findPause = await PauseCall.find({agent_id:req.authData._id}).lean()
-    findPause.reverse()
-    if(!findPause){
-        return res.status(200).json({message : "Data not found"})
+  static async GetPauseCall(req, res, next) {
+    const findPause = await PauseCall.find({
+      agent_id: req.authData._id,
+    }).lean();
+    findPause.reverse();
+    if (!findPause) {
+      return res.status(200).json({ message: "Data not found" });
     }
 
     return res.status(200).json({
@@ -671,7 +768,6 @@ class AgentModel {
       code: 200,
       data: findPause,
     });
-
   }
   static async hotelNameList(req, res, next) {
     try {
@@ -800,9 +896,7 @@ class AgentModel {
               $and: [
                 {
                   call_date: {
-                    $gte: JSON.stringify(firstDayOfMonth)
-                      .split("T")[0]
-                      .slice(1),
+                    $gt: JSON.stringify(firstDayOfMonth).split("T")[0].slice(1),
                   },
                 },
                 {
@@ -836,7 +930,7 @@ class AgentModel {
             },
           });
         }
-        const d = await CallDetail.aggregate(pipeline);
+        const d = await callDetails.aggregate(pipeline);
         if (req.query.type === "WEEKLY") {
           result.push({
             type: lastDayOfMonth.toLocaleString("default", {
