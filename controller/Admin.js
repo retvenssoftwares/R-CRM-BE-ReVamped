@@ -591,17 +591,6 @@ class AdminModel {
     }
   }
 
-  static async getAvgCallTime(req, res, next) {
-
-    try {
-
-      let findCall = await callDetail.find({})
-
-    } catch {
-
-    }
-  }
-
   static async getAgentStats(req, res, next) {
     try {
 
