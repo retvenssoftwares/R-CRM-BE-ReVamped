@@ -492,9 +492,9 @@ class AgentModel {
       }
 
       if (req.authData.role === "ADMIN") {
-        condition.unshift({ $match: { admin_id: req.authData._id } });
+        condition.unshift({ $match: { admin_id: new mongoose.Types.ObjectId(req.authData._id) } });
       } else if (req.authData.role === "AGENT") {
-        condition.unshift({ $match: { agent_id: req.authData._id } });
+        condition.unshift({ $match: { agent_id: new mongoose.Types.ObjectId(req.authData._id) } });
       }
 
       let findCalls = await callDetails.aggregate(condition);
