@@ -1,14 +1,12 @@
 
-// Get the current date
-const currentDate = new Date();
+const formatTime = (seconds) => {
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const remainingSeconds = seconds % 60;
 
-// Loop through the previous 7 days
-for (let i = 0; i < 7; i++) {
-  // Calculate the startDateTime and endDateTime for each day
-  const startDateTime = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate() - i, 0, 0, 0);
-  const endDateTime = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate() - i, 23, 59, 59);
+  const formattedHours = hours.toString().padStart(2, '0');
+  const formattedMinutes = minutes.toString().padStart(2, '0');
+  const formattedSeconds = remainingSeconds.toString().padStart(2, '0');
 
-  // Use the startDateTime and endDateTime as needed
-  console.log(`Start DateTime for Day ${i + 1}: ${startDateTime}`);
-  console.log(`End DateTime for Day ${i + 1}: ${endDateTime}`);
-}
+  return `${formattedHours} h ${formattedMinutes} m ${formattedSeconds} s`;
+};

@@ -12,6 +12,7 @@ import login_logout from "../model/LoginAndLogOut.js"
 import CallDetail from "../model/callDetails.js"
 import mongoose from "mongoose";
 import dispositions from "../model/Disposition.js"
+import { formatTime } from "../utils/formattime.js";
 
 dotenv.config({ path: "./.env" });
 
@@ -636,52 +637,54 @@ class AdminModel {
       // No Answer
       const noAnswer = await CallDetail.countDocuments({ admin_id: new mongoose.Types.ObjectId(admin_Id), dial_status: "Diconnected", type: "Inbound" });
 
-      // Average number of min
-      // const avgCallTimeIncoming = await CallDetail.aggregate([
-      //   {
-      //     $match: {
-      //       admin_id : new mongoose.Types.ObjectId(admin_Id),
-      //       type: "Inbound",
-      //       talktime: { $exists: true },
-      //     },
-      //   },
-      //   {
-      //     $group: {
-      //       _id: null,
-      //       avgCallTime: { $avg: "$talktime" },
-      //     },
-      //   },
-      // ]);
+      //Average number of min
+      const CallTimeIncoming = await CallDetail.aggregate([
+        {
+          $match: {
+            admin_id: new mongoose.Types.ObjectId(admin_Id),
+            type: "Inbound",
+            talktime: { $exists: true },
+          },
+        }
+      ]);
+      const CallTimeOutgoing = await CallDetail.aggregate([
+        {
+          $match: {
+            admin_id: new mongoose.Types.ObjectId(admin_Id),
+            type: "Outbound",
+            talktime: { $exists: true },
+          },
+        }
+      ]);
 
-      // const avgCallTimeOutgoing = await CallDetail.aggregate([
-      //   {
-      //     $match: {
-      //       admin_id : new mongoose.Types.ObjectId(admin_Id),
-      //       type: "Outbound",
-      //       talktime: { $exists: true },
-      //     },
-      //   },
-      //   {
-      //     $group: {
-      //       _id: null,
-      //       avgCallTime: { $avg: "$talktime" },
-      //     },
-      //   },
-      // ]);
+      let sumCallTimeOutgoing = 0;
+      await Promise.all(CallTimeOutgoing.map((data) => {
+        if(data.talktime){
+          sumCallTimeOutgoing = sumCallTimeOutgoing + parseInt(data.talktime.split(":")[0])*3600 + parseInt(data.talktime.split(":")[1])*60 + parseInt(data.talktime.split(":")[2]);
+        }
+      }))
 
+      let sumCallTimeIncoming = 0;
+      await Promise.all(CallTimeIncoming.map((data) => {
+        console.log(data);
+        if(data.talktime){
+          sumCallTimeIncoming = sumCallTimeIncoming + parseInt(data.talktime.split(":")[0])*3600 + parseInt(data.talktime.split(":")[1])*60 + parseInt(data.talktime.split(":")[2]);
+        }
+      }))
 
-
+      const avgCallTimeIncoming = sumCallTimeIncoming/CallTimeIncoming.length;
+      const avgCallTimeOutgoing = sumCallTimeOutgoing/CallTimeOutgoing.length;
 
       return res.status(200).json({
         status: true,
         code: 200,
         message: "TODO",
         data: [
-          // {
-          //   type: "Average Call Time",
-          //   avgCallTimeIncoming: convertMinutesToTime(avgCallTimeIncoming[0]?.avgCallTime || 0),
-          //   avgCallTimeOutgoing: convertMinutesToTime(avgCallTimeOutgoing[0]?.avgCallTime || 0),
-          // },
+          {
+            type: "Average Call Time",
+            avgCallTimeOutgoing: formatTime(avgCallTimeOutgoing),
+            avgCallTimeIncoming: formatTime(avgCallTimeIncoming),
+          },
           {
             type: "Calls Today",
             totalCalls: incommingCallsToday + outgoingCallsToday,
@@ -719,8 +722,10 @@ class AdminModel {
             reservationOutgoingCalls: reservationOutgoingCalls,
           },
         ],
+        
       });
     } catch (error) {
+      console.log(error);
       return next(new ErrorHandler(error.message, 500));
     }
   }
