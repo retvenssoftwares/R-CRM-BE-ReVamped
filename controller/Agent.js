@@ -6,6 +6,7 @@ import guestDetail from "../model/Guest.js";
 
 import mongoose from "mongoose";
 import { randomString } from "../middleware/custom.js";
+import Disposition from "../model/Disposition.js";
 class AgentModel {
   static async GuestInfo(req, res, next) {
     const { phone_number } = req.body;
@@ -492,9 +493,13 @@ class AgentModel {
       }
 
       if (req.authData.role === "ADMIN") {
-        condition.unshift({ $match: { admin_id: new mongoose.Types.ObjectId(req.authData._id) } });
+        condition.unshift({
+          $match: { admin_id: new mongoose.Types.ObjectId(req.authData._id) },
+        });
       } else if (req.authData.role === "AGENT") {
-        condition.unshift({ $match: { agent_id: new mongoose.Types.ObjectId(req.authData._id) } });
+        condition.unshift({
+          $match: { agent_id: new mongoose.Types.ObjectId(req.authData._id) },
+        });
       }
 
       let findCalls = await callDetails.aggregate(condition);
@@ -503,6 +508,18 @@ class AgentModel {
         obj[itm.disposition] = obj[itm.disposition] + 1 || 1;
         return obj;
       }, {});
+
+      let findDisposition = await Disposition.find().lean();
+
+      await findDisposition.map(async (e) => {
+        let findKeys = Object.keys(result).find((el) => {
+          return el == e.name;
+        }) ? true : false ;
+
+        if(!findKeys){
+          result[e.name] = 0
+        }
+      });
 
       return res.status(200).json({
         status: true,
