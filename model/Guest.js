@@ -81,9 +81,6 @@ const guestDetailSchema = mongoose.Schema({
     }
    
    
-  
-
-        
 
 }, {timestamps:true})
 

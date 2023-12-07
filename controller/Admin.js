@@ -61,35 +61,50 @@ class AdminModel {
 
       // pending for coral api
 
-      // if (findUser.role === "AGENT") {
-      //   const data = {
-      //     agent_id: findAgent.length + 1 || 1,
-      //     agent_text: req.query.ext_name,
-      //   };
+      if (findUser.role === "AGENT") {
 
-      //   const options = {
-      //     method: "POST",
-      //     url: BASE_URL + "/agentlogin",
-      //     headers: {
-      //       accept: "application/json",
-      //       "content-type": "application/json",
-      //       Authorization: process.env.API_KEY,
-      //     },
-      //     data: data,
-      //   };
-      //   const apiResponse = await new Promise(async (resolve, reject) => {
-      //     axios
-      //       .request(options)
-      //       .then(function (response1) {
-      //         resolve(response1.data);
-      //         return response;
-      //       })
-      //       .catch(function (error) {
-      //         reject(error);
-      //         return response;
-      //       });
-      //   });
-      // }
+        const log_in_time = new Date()
+
+        await login_logout.updateOne(
+          { agent_id: findUser._id },
+          {
+            $push: {
+              log_in_log_out_time: {
+                $each: [{ log_in_time: log_in_time }],
+                $position: 0,
+              },
+            },
+          },
+          { upsert: true }
+        );
+        //   const data = {
+        //     agent_id: findAgent.length + 1 || 1,
+        //     agent_text: req.query.ext_name,
+        //   };
+
+        //   const options = {
+        //     method: "POST",
+        //     url: BASE_URL + "/agentlogin",
+        //     headers: {
+        //       accept: "application/json",
+        //       "content-type": "application/json",
+        //       Authorization: process.env.API_KEY,
+        //     },
+        //     data: data,
+        //   };
+        //   const apiResponse = await new Promise(async (resolve, reject) => {
+        //     axios
+        //       .request(options)
+        //       .then(function (response1) {
+        //         resolve(response1.data);
+        //         return response;
+        //       })
+        //       .catch(function (error) {
+        //         reject(error);
+        //         return response;
+        //       });
+        //   });
+      }
       // TODO :
 
       const _id = findUser._id;
@@ -102,20 +117,7 @@ class AdminModel {
 
       const jwtToken = await signJwt(payload);
 
-      const log_in_time = new Date()
 
-      await login_logout.updateOne(
-        { agent_id: findUser._id },
-        {
-          $push: {
-            log_in_log_out_time: {
-              $each: [{ log_in_time: log_in_time }],
-              $position: 0,
-            },
-          },
-        },
-        { upsert: true }
-      );
 
 
       return res.status(200).json({
@@ -131,55 +133,10 @@ class AdminModel {
 
 
 
-  static async logOut(req, res, next) {
-    const { email, password, log_out_time } = req.body
-
-    if (!email && !password) {
-      return res.status(422).json({
-        status: false,
-        code: 422,
-        message: "Please fill all the required field",
-      });
-    }
-    let findUser = await User.findOne({ email }).lean();
-
-    if (!findUser) {
-      return res.status(410).json({
-        status: false,
-        code: 410,
-        message: "Email did not match!!",
-      });
-    }
-    let validPassword = await bcrypt.compare(password, findUser.password);
-    if (!validPassword) {
-      return res.status(410).json({
-        status: false,
-        code: 410,
-        message: "Password did not match!!",
-      });
-    }
-
-
-    await login_logout.updateOne(
-      { agent_id: findUser._id },
-      {
-        $push: {
-          log_in_log_out_time: {
-            $each: [{ log_in_time: log_out_time }],
-            $position: 0,
-          },
-        },
-      },
-      { upsert: true }
-    );
-
-
-
-  }
 
   static async AddUser(req, res, next) {
     try {
-      console.log(req.authData.role,"req.authData.rolereq.authData.rolereq.authData.role")
+      console.log(req.authData.role, "req.authData.rolereq.authData.rolereq.authData.role")
       if (req.authData.role === "ADMIN") {
         let email = req.body.email;
         let name = req.body.name;
