@@ -7,6 +7,7 @@ import PauseCall from "../model/PauseCall.js"
 
 import mongoose from "mongoose";
 import { randomString } from "../middleware/custom.js";
+import Disposition from "../model/Disposition.js";
 class AgentModel {
   static async GuestInfo(req, res, next) {
     const { phone_number } = req.body;
@@ -467,11 +468,65 @@ class AgentModel {
 
   static async dispositionGraph(req, res, next) {
     try {
+      let condition = [{ $match: {} }];
+      if (req.query.type) {
+        let startDate = JSON.stringify(new Date()).split("T")[0].slice(1);
+        let endDate;
+
+        if (req.query.type === "WEEK") {
+          endDate =
+            new Date().setUTCHours(0, 0, 0, 0) - 7 * 24 * 60 * 60 * 999.99;
+        }
+
+        if (req.query.type === "MONTH") {
+          endDate =
+            new Date().setUTCHours(0, 0, 0, 0) - 30 * 24 * 60 * 60 * 999.99;
+        }
+
+        condition.unshift({
+          $match: {
+            $and: [
+              { call_date: { $lte: startDate } },
+              { call_date: { $gte: endDate } },
+            ],
+          },
+        });
+      }
+
+      if (req.authData.role === "ADMIN") {
+        condition.unshift({
+          $match: { admin_id: new mongoose.Types.ObjectId(req.authData._id) },
+        });
+      } else if (req.authData.role === "AGENT") {
+        condition.unshift({
+          $match: { agent_id: new mongoose.Types.ObjectId(req.authData._id) },
+        });
+      }
+
+      let findCalls = await callDetails.aggregate(condition);
+
+      let result = findCalls.reduce((obj, itm) => {
+        obj[itm.disposition] = obj[itm.disposition] + 1 || 1;
+        return obj;
+      }, {});
+
+      let findDisposition = await Disposition.find().lean();
+
+      await findDisposition.map(async (e) => {
+        let findKeys = Object.keys(result).find((el) => {
+          return el == e.name;
+        }) ? true : false ;
+
+        if(!findKeys){
+          result[e.name] = 0
+        }
+      });
+
       return res.status(200).json({
         status: true,
         code: 200,
         message: "Details....",
-        data: findCall,
+        data: result,
       });
     } catch (error) {
       return res.status(500).json({
@@ -523,7 +578,7 @@ class AgentModel {
     }
   }
 
-  static async hotelNameList(req, res, next) {
+  static async hotelDestinationList(req, res, next) {
     try {
       let condition = [
         { $match: {} },
@@ -607,6 +662,207 @@ class AgentModel {
       code: 200,
       data: findPause,
     });
+
+  }
+  static async hotelNameList(req, res, next) {
+    try {
+      let condition = [
+        { $match: {} },
+        {
+          $project: {
+            hotel_name: 1,
+          },
+        },
+      ];
+      if (req.authData.role === "ADMIN") {
+        condition.unshift({
+          $match: {
+            admin_id: new mongoose.Types.ObjectId(req.authData._id),
+          },
+        });
+      }
+
+      if (req.authData.role === "AGENT") {
+        condition.unshift({
+          $match: {
+            agent_id: new mongoose.Types.ObjectId(req.authData._id),
+          },
+        });
+      }
+
+      let findHotelDestination = await callDetails.aggregate(condition);
+
+      const unique = findHotelDestination.reduce((acc, curr) => {
+        const matchingNode = acc.find(
+          (node) => node.hotel_name === curr.hotel_name
+        );
+        if (!matchingNode) {
+          acc.push(curr);
+        }
+        return acc;
+      }, []);
+
+      return res.status(200).json({
+        status: true,
+        code: 200,
+        message: "Details....",
+        data: unique,
+      });
+    } catch (error) {
+      return res.status(500).json({
+        status: false,
+        code: 500,
+        message: error.message,
+      });
+    }
+  }
+
+  static async CallsBarGraph(req, res, next) {
+    try {
+      const agent_id = req.authData?._id;
+      let currentDate = new Date();
+      let result = [];
+      for (let i = 0; i < 7; i++) {
+        let firstDayOfMonth;
+        let lastDayOfMonth;
+
+        if (req.query.type === "MONTHLY") {
+          firstDayOfMonth = new Date(
+            currentDate.getFullYear(),
+            currentDate.getMonth() - i,
+            1
+          );
+          lastDayOfMonth = new Date(
+            currentDate.getFullYear(),
+            currentDate.getMonth() - i + 1,
+            0
+          );
+        } else if (req.query.type === "WEEKLY") {
+          firstDayOfMonth = new Date(
+            currentDate.getFullYear(),
+            currentDate.getMonth(),
+            currentDate.getDate() - i * 7 - currentDate.getDay()
+          );
+          lastDayOfMonth = new Date(
+            currentDate.getFullYear(),
+            currentDate.getMonth(),
+            currentDate.getDate() - i * 7 - currentDate.getDay() + 6,
+            23,
+            59,
+            59,
+            999
+          );
+        } else if (req.query.type === "DAYS") {
+          firstDayOfMonth = new Date(
+            currentDate.getFullYear(),
+            currentDate.getMonth(),
+            currentDate.getDate() - i
+          );
+          lastDayOfMonth = new Date(
+            currentDate.getFullYear(),
+            currentDate.getMonth(),
+            currentDate.getDate() - i,
+            23,
+            59,
+            59,
+            999
+          );
+        } else {
+          firstDayOfMonth = new Date(
+            currentDate.getFullYear(),
+            currentDate.getMonth() - i,
+            1
+          );
+          lastDayOfMonth = new Date(
+            currentDate.getFullYear(),
+            currentDate.getMonth() - i + 1,
+            0
+          );
+        }
+
+        let pipeline = [
+          {
+            $match: {
+              agent_id: new mongoose.Types.ObjectId(agent_id),
+            },
+          },
+          {
+            $match: {
+              $and: [
+                {
+                  call_date: {
+                    $gte: JSON.stringify(firstDayOfMonth)
+                      .split("T")[0]
+                      .slice(1),
+                  },
+                },
+                {
+                  call_date: {
+                    $lte: JSON.stringify(lastDayOfMonth).split("T")[0].slice(1),
+                  },
+                },
+              ],
+            },
+          },
+          {
+            $group: {
+              _id: null,
+              count: { $sum: 1 },
+            },
+          },
+        ];
+
+        if (req.query.hotel_destination) {
+          pipeline.unshift({
+            $match: {
+              hotel_destination: req.query.hotel_destination,
+            },
+          });
+        }
+
+        if (req.query.hotel_name) {
+          pipeline.unshift({
+            $match: {
+              hotel_name: req.query.hotel_name,
+            },
+          });
+        }
+        const d = await CallDetail.aggregate(pipeline);
+        if (req.query.type === "WEEKLY") {
+          result.push({
+            type: lastDayOfMonth.toLocaleString("default", {
+              month: "short",
+              day: "numeric",
+              year: "numeric",
+            }),
+            count: d[0]?.count || 0,
+          });
+        } else if (req.query.type === "DAYS") {
+          result.push({
+            type: lastDayOfMonth.toLocaleString("default", {
+              month: "short",
+              day: "numeric",
+              year: "numeric",
+            }),
+            count: d[0]?.count || 0,
+          });
+        } else {
+          result.push({
+            type: lastDayOfMonth.toLocaleString("default", { month: "short" }),
+            count: d[0]?.count || 0,
+          });
+        }
+      }
+
+      return res.status(200).json({
+        status: true,
+        code: 200,
+        message: "Data Fetched successfully",
+        data: result.reverse(),
+      });
+    } catch (error) {
+      return next(new ErrorHandler(error.message, 500));
+    }
   }
 }
 

@@ -112,9 +112,9 @@ class AdminModel {
               $each: [{ log_in_time: log_in_time }],
               $position: 0,
             },
-          },  
+          },
         },
-        {upsert:true}
+        { upsert: true }
       );
 
 
@@ -168,9 +168,9 @@ class AdminModel {
             $each: [{ log_in_time: log_out_time }],
             $position: 0,
           },
-        },  
+        },
       },
-      {upsert:true}
+      { upsert: true }
     );
 
 
@@ -179,6 +179,7 @@ class AdminModel {
 
   static async AddUser(req, res, next) {
     try {
+      console.log(req.authData.role,"req.authData.rolereq.authData.rolereq.authData.role")
       if (req.authData.role === "ADMIN") {
         let email = req.body.email;
         let name = req.body.name;
@@ -596,111 +597,134 @@ class AdminModel {
       let findCall = await callDetail.find({})
 
     } catch {
-      try {
 
-        //
-        const admin_Id = req.authData?.admin_id || "656f0c455589a45cbf4a1f51";
-
-        // Total Today Calls
-        const currentDate = JSON.stringify(new Date()).split("T")[0].slice(1);
-        const incommingCallsToday = await CallDetail.countDocuments({ admin_id: new mongoose.Types.ObjectId(admin_Id), call_date: currentDate, type: "Inbound" });
-        const outgoingCallsToday = await CallDetail.countDocuments({ admin_id: new mongoose.Types.ObjectId(admin_Id), call_date: currentDate, type: "Outbound" });
-
-
-        // Total Calls
-        const incommingCalls = await CallDetail.countDocuments({ admin_id: new mongoose.Types.ObjectId(admin_Id), call_date: currentDate, type: "Inbound" });
-        const outgoingCalls = await CallDetail.countDocuments({ admin_id: new mongoose.Types.ObjectId(admin_Id), call_date: currentDate, type: "Outbound" });
-
-        // Missed Calls
-        const missedCalls = await CallDetail.countDocuments({ admin_id: new mongoose.Types.ObjectId(admin_Id), dial_status: "Diconnected", type: "Inbound" });
-
-        // Abandoned Calls
-        const abandonedCalls = await CallDetail.countDocuments({ admin_id: new mongoose.Types.ObjectId(admin_Id), dial_status: "Diconnected", type: "Outbound" });
-
-        // Reservation Calls
-        const reservationCalls = await CallDetail.countDocuments({ admin_id: new mongoose.Types.ObjectId(admin_Id), call_date: currentDate, department: "RESERVATION" });
-        const reservationIncommingCalls = await CallDetail.countDocuments({ admin_id: new mongoose.Types.ObjectId(admin_Id), call_date: currentDate, type: "Inbound", department: "RESERVATION" });
-        const reservationOutgoingCalls = await CallDetail.countDocuments({ admin_id: new mongoose.Types.ObjectId(admin_Id), call_date: currentDate, type: "Outbound", department: "RESERVATION" });
-
-        // Average number of min
-        // const avgCallTimeIncoming = await CallDetail.aggregate([
-        //   {
-        //     $match: {
-        //       admin_id : new mongoose.Types.ObjectId(admin_Id),
-        //       type: "Inbound",
-        //       talktime: { $exists: true },
-        //     },
-        //   },
-        //   {
-        //     $group: {
-        //       _id: null,
-        //       avgCallTime: { $avg: "$talktime" },
-        //     },
-        //   },
-        // ]);
-
-        // const avgCallTimeOutgoing = await CallDetail.aggregate([
-        //   {
-        //     $match: {
-        //       admin_id : new mongoose.Types.ObjectId(admin_Id),
-        //       type: "Outbound",
-        //       talktime: { $exists: true },
-        //     },
-        //   },
-        //   {
-        //     $group: {
-        //       _id: null,
-        //       avgCallTime: { $avg: "$talktime" },
-        //     },
-        //   },
-        // ]);
-
-
-
-
-        return res.status(200).json({
-          status: true,
-          code: 200,
-          message: "TODO",
-          data: [
-            // {
-            //   type: "Average Call Time",
-            //   avgCallTimeIncoming: convertMinutesToTime(avgCallTimeIncoming[0]?.avgCallTime || 0),
-            //   avgCallTimeOutgoing: convertMinutesToTime(avgCallTimeOutgoing[0]?.avgCallTime || 0),
-            // },
-            {
-              type: "Calls Today",
-              totalCalls: incommingCallsToday + outgoingCallsToday,
-              Inbound: incommingCallsToday,
-              Outbound: outgoingCallsToday,
-            },
-            {
-              type: "Total Calls",
-              totalCalls: incommingCalls + outgoingCalls,
-              Inbound: incommingCalls,
-              Outbound: outgoingCalls,
-            },
-            {
-              type: "Missed Calls",
-              missedCalls: missedCalls,
-            },
-            {
-              type: "Abandoned Calls",
-              abandonedCalls: abandonedCalls,
-            },
-            {
-              type: "Reservation Calls",
-              reservationCalls: reservationCalls,
-              reservationIncommingCalls: reservationIncommingCalls,
-              reservationOutgoingCalls: reservationOutgoingCalls,
-            },
-          ],
-        });
-      } catch (error) {
-        return next(new ErrorHandler(error.message, 500));
-      }
     }
   }
+
+  static async getAgentStats(req, res, next) {
+    try {
+
+      // Admin Id from AuthData
+      const admin_Id = req.authData?._id;
+
+      // Total Today Calls
+      const currentDate = JSON.stringify(new Date()).split("T")[0].slice(1);
+      const incommingCallsToday = await CallDetail.countDocuments({ admin_id: new mongoose.Types.ObjectId(admin_Id), call_date: currentDate, type: "Inbound" });
+      const outgoingCallsToday = await CallDetail.countDocuments({ admin_id: new mongoose.Types.ObjectId(admin_Id), call_date: currentDate, type: "Outbound" });
+
+
+      // Total Calls
+      const incommingCalls = await CallDetail.countDocuments({ admin_id: new mongoose.Types.ObjectId(admin_Id), type: "Inbound" });
+      const outgoingCalls = await CallDetail.countDocuments({ admin_id: new mongoose.Types.ObjectId(admin_Id), type: "Outbound" });
+
+      // Missed Calls
+      const missedCalls = await CallDetail.countDocuments({ admin_id: new mongoose.Types.ObjectId(admin_Id), dial_status: "Diconnected", type: "Inbound" });
+
+      // Abandoned Calls
+      const abandonedCalls = await CallDetail.countDocuments({ admin_id: new mongoose.Types.ObjectId(admin_Id), dial_status: "Diconnected", type: "Outbound" });
+
+      // Reservation Calls Today
+      const reservationCallsToday = await CallDetail.countDocuments({ admin_id: new mongoose.Types.ObjectId(admin_Id), call_date: currentDate, department: "RESERVATION" });
+      const reservationIncommingCallsToday = await CallDetail.countDocuments({ admin_id: new mongoose.Types.ObjectId(admin_Id), call_date: currentDate, type: "Inbound", department: "RESERVATION" });
+      const reservationOutgoingCallsToday = await CallDetail.countDocuments({ admin_id: new mongoose.Types.ObjectId(admin_Id), call_date: currentDate, type: "Outbound", department: "RESERVATION" });
+
+      // Reservation Calls
+      const reservationCalls = await CallDetail.countDocuments({ admin_id: new mongoose.Types.ObjectId(admin_Id), department: "RESERVATION" });
+      const reservationIncommingCalls = await CallDetail.countDocuments({ admin_id: new mongoose.Types.ObjectId(admin_Id), type: "Inbound", department: "RESERVATION" });
+      const reservationOutgoingCalls = await CallDetail.countDocuments({ admin_id: new mongoose.Types.ObjectId(admin_Id), type: "Outbound", department: "RESERVATION" });
+
+      // No Answer
+      const noAnswer = await CallDetail.countDocuments({ admin_id: new mongoose.Types.ObjectId(admin_Id), dial_status: "Diconnected", type: "Inbound" });
+
+      // Average number of min
+      // const avgCallTimeIncoming = await CallDetail.aggregate([
+      //   {
+      //     $match: {
+      //       admin_id : new mongoose.Types.ObjectId(admin_Id),
+      //       type: "Inbound",
+      //       talktime: { $exists: true },
+      //     },
+      //   },
+      //   {
+      //     $group: {
+      //       _id: null,
+      //       avgCallTime: { $avg: "$talktime" },
+      //     },
+      //   },
+      // ]);
+
+      // const avgCallTimeOutgoing = await CallDetail.aggregate([
+      //   {
+      //     $match: {
+      //       admin_id : new mongoose.Types.ObjectId(admin_Id),
+      //       type: "Outbound",
+      //       talktime: { $exists: true },
+      //     },
+      //   },
+      //   {
+      //     $group: {
+      //       _id: null,
+      //       avgCallTime: { $avg: "$talktime" },
+      //     },
+      //   },
+      // ]);
+
+
+
+
+      return res.status(200).json({
+        status: true,
+        code: 200,
+        message: "TODO",
+        data: [
+          // {
+          //   type: "Average Call Time",
+          //   avgCallTimeIncoming: convertMinutesToTime(avgCallTimeIncoming[0]?.avgCallTime || 0),
+          //   avgCallTimeOutgoing: convertMinutesToTime(avgCallTimeOutgoing[0]?.avgCallTime || 0),
+          // },
+          {
+            type: "Calls Today",
+            totalCalls: incommingCallsToday + outgoingCallsToday,
+            Inbound: incommingCallsToday,
+            Outbound: outgoingCallsToday,
+          },
+          {
+            type: "Total Calls",
+            totalCalls: incommingCalls + outgoingCalls,
+            Inbound: incommingCalls,
+            Outbound: outgoingCalls,
+          },
+          {
+            type: "Missed Calls",
+            missedCalls: missedCalls,
+          },
+          {
+            type: "Abandoned Calls",
+            abandonedCalls: abandonedCalls,
+          },
+          {
+            type: "No Answer",
+            noAnswer: noAnswer,
+          },
+          {
+            type: "Reservation Calls Today",
+            reservationCallsToday: reservationCallsToday,
+            reservationIncommingCalls: reservationIncommingCalls,
+            reservationOutgoingCallsToday: reservationOutgoingCallsToday,
+          },
+          {
+            type: "Reservation Calls",
+            reservationCalls: reservationCalls,
+            reservationIncommingCallsToday: reservationIncommingCallsToday,
+            reservationOutgoingCalls: reservationOutgoingCalls,
+          },
+        ],
+      });
+    } catch (error) {
+      return next(new ErrorHandler(error.message, 500));
+    }
+  }
+
   static async verificationAdmin(req, res, next) {
     try {
       const { email, password } = req.body;
@@ -788,16 +812,32 @@ class AdminModel {
 
   static async CallsMonthBarGraph(req, res, next) {
     try {
-      const admin_id = req.authData?.admin_id || "656f0c455589a45cbf4a1f51";
+      const admin_id = req.authData?._id;
       let currentDate = new Date();
       let result = [];
       for (let i = 0; i < 7; i++) {
-        let firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
-        let lastDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() - i + 1, 0);
+        let firstDayOfMonth;
+        let lastDayOfMonth;
+
+        if (req.query.type === 'MONTHLY') {
+          firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
+          lastDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() - i + 1, 0);
+        } else if (req.query.type === 'WEEKLY') {
+          firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate() - i * 7 - currentDate.getDay());
+          lastDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate() - i * 7 - currentDate.getDay() + 6, 23, 59, 59, 999);
+        } else if (req.query.type === 'DAYS') {
+          firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate() - i);
+          lastDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate() - i, 23, 59, 59, 999);
+        } else {
+          firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
+          lastDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() - i + 1, 0);
+        }
+
+
         let pipeline = [
           {
             $match: {
-              admin_id : new mongoose.Types.ObjectId(admin_id),
+              admin_id: new mongoose.Types.ObjectId(admin_id),
             },
           },
           {
@@ -836,10 +876,23 @@ class AdminModel {
           })
         }
         const d = await CallDetail.aggregate(pipeline);
-        result.push({
-          month: lastDayOfMonth.toLocaleString('default', { month: 'short' }),
-          count: d[0]?.count || 0
-        })
+        if (req.query.type === 'WEEKLY') {
+          result.push({
+            type: lastDayOfMonth.toLocaleString('default', { month: 'short', day: "numeric", year: 'numeric' }),
+            count: d[0]?.count || 0
+          })
+        } else if (req.query.type === 'DAYS') {
+          result.push({
+            type: lastDayOfMonth.toLocaleString('default', { month: 'short', day: "numeric", year: 'numeric' }),
+            count: d[0]?.count || 0
+          })
+        } else {
+          result.push({
+            type: lastDayOfMonth.toLocaleString('default', { month: 'short' }),
+            count: d[0]?.count || 0
+          })
+        }
+
       }
 
       return res.status(200).json({
@@ -854,10 +907,10 @@ class AdminModel {
   }
 
 
-  static async getDisposition(req, res, next){
+  static async getDisposition(req, res, next) {
     let findDisposition = await dispositions.find({})
 
-    if(!findDisposition){
+    if (!findDisposition) {
       return res.status(401).json({
         status: false,
         code: 401,
@@ -875,11 +928,11 @@ class AdminModel {
   }
   static async CallsCurrentDate(req, res, next) {
     try {
-      const admin_id = req.authData?.admin_id || "656f0c455589a45cbf4a1f51";
+      const admin_id = req.authData?._id;
       let pipeline = [
         {
           $match: {
-            admin_id : new mongoose.Types.ObjectId(admin_id),
+            admin_id: new mongoose.Types.ObjectId(admin_id),
           },
         },
         {
@@ -957,22 +1010,22 @@ class AdminModel {
 
   static async AllTimePerFormer(req, res, next) {
     try {
-      const admin_id = req.authData?.admin_id || "656f0c455589a45cbf4a1f51";
+      const admin_id = req.authData?._id;
       let pipeline = [
         {
           $match: {
-            admin_id : new mongoose.Types.ObjectId(admin_id),
+            admin_id: new mongoose.Types.ObjectId(admin_id),
           },
         },
         {
           $match: {
-            department : "RESERVATION",
+            department: "RESERVATION",
           },
         },
         {
-          $group : {
-            _id : "$admin_id",
-            count : {$sum : 1}
+          $group: {
+            _id: "$admin_id",
+            count: { $sum: 1 }
           }
         },
         {
@@ -987,9 +1040,9 @@ class AdminModel {
           $unwind: "$user"
         },
         {
-          $project : {
-            name : "$user.name",
-            count : 1
+          $project: {
+            name: "$user.name",
+            count: 1
           }
         }
       ];
@@ -1017,7 +1070,7 @@ class AdminModel {
 
   static async TodayPerFormer(req, res, next) {
     try {
-      const admin_id = req.authData?.admin_id || "656f0c455589a45cbf4a1f51";
+      const admin_id = req.authData?._id;
       let pipeline = [
         {
           $match: {
@@ -1026,18 +1079,18 @@ class AdminModel {
         },
         {
           $match: {
-            admin_id : new mongoose.Types.ObjectId(admin_id),
+            admin_id: new mongoose.Types.ObjectId(admin_id),
           },
         },
         {
           $match: {
-            department : "RESERVATION",
+            department: "RESERVATION",
           },
         },
         {
-          $group : {
-            _id : "$admin_id",
-            count : {$sum : 1}
+          $group: {
+            _id: "$admin_id",
+            count: { $sum: 1 }
           }
         },
         {
@@ -1052,9 +1105,9 @@ class AdminModel {
           $unwind: "$user"
         },
         {
-          $project : {
-            name : "$user.name",
-            count : 1
+          $project: {
+            name: "$user.name",
+            count: 1
           }
         }
       ];
