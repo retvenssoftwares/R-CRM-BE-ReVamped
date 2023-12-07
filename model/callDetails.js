@@ -7,7 +7,6 @@ const call = new mongoose.Schema({
     agent_id: { type: mongoose.Types.ObjectId, },
     admin_id: { type: mongoose.Types.ObjectId, },
 
-
     // employee_status: { type: String },
     call_date: { type: String, required: true },
     start_time: { type: String, },
