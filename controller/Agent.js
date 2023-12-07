@@ -8,6 +8,7 @@ import PauseCall from "../model/PauseCall.js";
 import mongoose from "mongoose";
 import { randomString } from "../middleware/custom.js";
 import Disposition from "../model/Disposition.js";
+import { formatTime } from "../utils/formattime.js";
 class AgentModel {
   static async GuestInfo(req, res, next) {
     const { phone_number } = req.body;
@@ -278,19 +279,42 @@ class AgentModel {
         ],
       });
 
-      // let findInboundCall = await callDetails
-      //   .find({
-      //     $and: [
-      //       { type: "Inbound" },
-      //       { agent_id: new mongoose.Types.ObjectId(req.authData._id) },
-      //     ],
-      //   })
-      //   .lean();
+      const CallTimeIncoming = await callDetails.aggregate([
+        {
+          $match: {
+             agent_id: new mongoose.Types.ObjectId(req.authData._id), 
+            type: "Inbound",
+            talktime: { $exists: true },
+          },
+        }
+      ]);
+      const CallTimeOutgoing = await callDetails.aggregate([
+        {
+          $match: {
+            agent_id: new mongoose.Types.ObjectId(req.authData._id), 
+            type: "Outbound",
+            talktime: { $exists: true },
+          },
+        }
+      ]);
 
-      //   findInboundCall.map((e) => {
-      //   console.log(e, "findCallfindCallfindCallfindCallfindCall");
-      //   e.talktime
-      // });
+      let sumCallTimeOutgoing = 0;
+      await Promise.all(CallTimeOutgoing.map((data) => {
+        if(data.talktime){
+          sumCallTimeOutgoing = sumCallTimeOutgoing + parseInt(data.talktime.split(":")[0])*3600 + parseInt(data.talktime.split(":")[1])*60 + parseInt(data.talktime.split(":")[2]);
+        }
+      }))
+
+      let sumCallTimeIncoming = 0;
+      await Promise.all(CallTimeIncoming.map((data) => {
+        console.log(data);
+        if(data.talktime){
+          sumCallTimeIncoming = sumCallTimeIncoming + parseInt(data.talktime.split(":")[0])*3600 + parseInt(data.talktime.split(":")[1])*60 + parseInt(data.talktime.split(":")[2]);
+        }
+      }))
+
+      const avgCallTimeIncoming = sumCallTimeIncoming/CallTimeIncoming.length;
+      const avgCallTimeOutgoing = sumCallTimeOutgoing/CallTimeOutgoing.length;
 
       let data1 = {
         total_call: total_call,
@@ -309,6 +333,9 @@ class AgentModel {
         total_missed_call: total_missed_call,
         no_answer: no_answer,
         abandoned: abandoned,
+        avgCallTimeIncoming:formatTime(avgCallTimeIncoming),
+        avgCallTimeOutgoing:formatTime(avgCallTimeOutgoing)
+
       };
 
       return res.status(200).json({
@@ -543,7 +570,6 @@ class AgentModel {
           },
         });
       }
-
 
       let findCalls = await callDetails.aggregate(condition);
 
