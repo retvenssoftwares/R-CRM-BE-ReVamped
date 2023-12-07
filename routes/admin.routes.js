@@ -22,9 +22,9 @@ router.get('/get_disposition',AdminModel.getDisposition)
 
 
 // DashBoard
-router.get('/stats-card', AdminModel.getAvgCallTime);
-router.get('/calls-bar-graph', AdminModel.CallsMonthBarGraph);
-router.get('/calls-today', AdminModel.CallsCurrentDate);
-router.get('/all-time-performer', AdminModel.AllTimePerFormer);
-router.get('/today-performer', AdminModel.TodayPerFormer);
+router.get('/stats-card',verifyJwt, AdminModel.getAgentStats);
+router.get('/calls-bar-graph',verifyJwt, AdminModel.CallsMonthBarGraph);
+router.get('/calls-today',verifyJwt, AdminModel.CallsCurrentDate);
+router.get('/all-time-performer',verifyJwt, AdminModel.AllTimePerFormer);
+router.get('/today-performer',verifyJwt, AdminModel.TodayPerFormer);
 export default router
