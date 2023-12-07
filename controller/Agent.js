@@ -383,10 +383,37 @@ class AgentModel {
           $unwind: "$guest",
         },
         {
+          $addFields: {
+            startDate: {
+              $dateFromString: {
+                dateString: "$arrival_date"
+              }
+            },
+            endDate: {
+              $dateFromString: {
+                dateString: "$departure_date"
+              }
+            }
+          }
+        },
+        {
+          $addFields: {
+            noOfNights: {
+              $divide: [
+                {
+                  $subtract: ["$endDate", "$startDate"]
+                },
+                1000 * 60 * 60 * 24
+              ]
+            }
+          }
+        },
+        {
           $project: {
             hotel_name: 1,
             guest_name: "$guest.guest_first_name",
             guest_last_name: "$guest.guest_last_name",
+            noOfNights: 1
           },
         },
         {
