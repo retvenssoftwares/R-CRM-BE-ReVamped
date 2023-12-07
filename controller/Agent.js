@@ -661,6 +661,15 @@ class AgentModel {
         });
       }
 
+      if (req.query.type) {
+        condition.push({
+          $match: {
+            type:req.query.type,
+          },
+        });
+      }
+
+     
       if (req.query.abandoned) {
         condition.push({
           $match: {
