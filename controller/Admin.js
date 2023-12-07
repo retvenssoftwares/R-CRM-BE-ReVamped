@@ -663,7 +663,7 @@ class AdminModel {
         },
       ]);
 
-      let conversionRate = (totalClosedCalls / totalReservation) * 100;
+      let conversionRate = (totalClosedCalls / totalReservation) * 100 || 0;
 
       //Average number of min
       const CallTimeIncoming = await CallDetail.aggregate([
@@ -761,6 +761,10 @@ class AdminModel {
             totalTime: formatTime(totalTimee),
           },
           {
+            type: "Avg Conversion Rate",
+            avgConversionRate: 0,
+          },
+          {
             type: "Conversion Rate",
             noAnswer: conversionRate,
           },
@@ -782,12 +786,12 @@ class AdminModel {
             reservationIncommingCalls: reservationIncommingCalls,
             reservationOutgoingCallsToday: reservationOutgoingCallsToday,
           },
-          {
-            type: "Reservation Calls",
-            reservationCalls: reservationCalls,
-            reservationIncommingCallsToday: reservationIncommingCallsToday,
-            reservationOutgoingCalls: reservationOutgoingCalls,
-          },
+          // {
+          //   type: "Reservation Calls",
+          //   reservationCalls: reservationCalls,
+          //   reservationIncommingCallsToday: reservationIncommingCallsToday,
+          //   reservationOutgoingCalls: reservationOutgoingCalls,
+          // },
           {
             type: "Abandoned Calls",
             abandonedCalls: abandonedCalls,
