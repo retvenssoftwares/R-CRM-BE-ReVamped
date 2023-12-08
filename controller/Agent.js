@@ -327,28 +327,51 @@ class AgentModel {
       const avgCallTimeIncoming = sumCallTimeIncoming/CallTimeIncoming.length;
       const avgCallTimeOutgoing = sumCallTimeOutgoing/CallTimeOutgoing.length;
 
-      let data1 = {
-        total_call: total_call,
-        total_incoming_call: total_incoming_call,
-        total_outgoing_call: total_outgoing_call,
-        today_call: today_call,
-        today_incoming_call: today_incoming_call,
-        today_outgoing_call: today_outgoing_call,
-        today_outgoing_call: today_outgoing_call,
-        reservation_call: reservation_call,
-        reservation_incoming_call: reservation_incoming_call,
-        reservation_outgoing_call: reservation_outgoing_call,
-        reservation_today: reservation_today,
-        reservation_incoming_today: reservation_incoming_today,
-        reservation_outgoing_today: reservation_outgoing_today,
-        total_missed_call: total_missed_call,
-        no_answer: no_answer,
-        abandoned: abandoned,
-        avgCallTimeIncoming:formatTime(avgCallTimeIncoming),
-        avgCallTimeOutgoing:formatTime(avgCallTimeOutgoing)
-
-      };
-
+      let data1 = [
+          {
+            type: "Total Calls",
+            totalCalls: total_call,
+            Inbound: total_incoming_call,
+            Outbound: total_outgoing_call,
+          },
+          {
+            type: "Average Call Time",
+            avgCallTimeOutgoing: formatTime(avgCallTimeOutgoing),
+            avgCallTimeIncoming: formatTime(avgCallTimeIncoming),
+          },
+          {
+            type: "Reservation Calls Today",
+            reservationCallsToday: reservation_today,
+            reservationIncommingCalls: reservation_incoming_today,
+            reservationOutgoingCallsToday: reservation_outgoing_today,
+          },
+          {
+            type: "Total Reservation Calls",
+            reservationCalls: reservation_call,
+            reservationIncommingCallsToday: reservation_incoming_call,
+            reservationOutgoingCalls: reservation_outgoing_call,
+          },
+          {
+            type: "Calls Today",
+            totalCalls: today_call,
+            Inbound: today_incoming_call,
+            Outbound: today_outgoing_call,
+          },
+          {
+            type: "Missed Calls",
+            missedCalls: total_missed_call,
+          },        
+        
+          {
+            type: "Abandoned Calls",
+            abandonedCalls: abandoned,
+          },
+          {
+            type: "No Answer",
+            noAnswer: no_answer,
+          },
+        ]
+ 
       return res.status(200).json({
         status: true,
         code: 200,
@@ -663,6 +686,15 @@ class AgentModel {
         });
       }
 
+      if (req.query.type) {
+        condition.push({
+          $match: {
+            type:req.query.type,
+          },
+        });
+      }
+
+     
       if (req.query.abandoned) {
         condition.push({
           $match: {
