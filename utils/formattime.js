@@ -7,7 +7,7 @@ const formatTime = (seconds) => {
     const formattedMinutes = minutes.toString().padStart(2, '0');
     const formattedSeconds = remainingSeconds.toString().padStart(2, '0');
 
-    return `${formattedHours} h ${formattedMinutes} m ${formattedSeconds} s`;
+    return `${Math.floor(formattedHours)} h ${Math.floor(formattedMinutes)} m ${Math.floor(formattedSeconds)} s`;
 };
 
 export {formatTime};
