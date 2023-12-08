@@ -115,7 +115,6 @@ class AdminModel {
       if (findUser.role === "AGENT") {
         payload.admin_id = findUser.created_by;
       }
-      console.log(payload, findUser);
 
       const jwtToken = await signJwt(payload);
 
@@ -726,7 +725,6 @@ class AdminModel {
       let sumCallTimeIncoming = 0;
       await Promise.all(
         CallTimeIncoming.map((data) => {
-          console.log(data);
           if (data.talktime) {
             sumCallTimeIncoming =
               sumCallTimeIncoming +

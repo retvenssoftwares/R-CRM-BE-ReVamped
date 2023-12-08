@@ -50,7 +50,6 @@ export async function calcPc (n1, n2) {
     return '-100%';
   } else {
     let P = n2 == 0 ? 1 : n2;
-    console.log(P)
     return (
       (((n2 - n1) / P) * 100).toLocaleString('fullwide', {
         maximumFractionDigits: 3,

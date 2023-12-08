@@ -316,7 +316,6 @@ class AgentModel {
 
       let sumCallTimeIncoming = 0;
       await Promise.all(CallTimeIncoming.map((data) => {
-        console.log(data);
         if(data.talktime){
           sumCallTimeIncoming = sumCallTimeIncoming + parseInt(data.talktime.split(":")[0])*3600 + parseInt(data.talktime.split(":")[1])*60 + parseInt(data.talktime.split(":")[2]);
         }
