@@ -45,8 +45,8 @@ const userSchema = new Schema(
     created_by:{type:mongoose.Types.ObjectId,enum:["ADMIN"]},
     agent_id:{type:Number},
     agentext:{type:Number},
-  
-
+    coral_admin_username : {type : String},
+    coral_admin_password : {type : String},
   },
   { versionKey: false, timestamp : true }
 );

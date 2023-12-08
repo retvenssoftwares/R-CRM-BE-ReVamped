@@ -115,7 +115,6 @@ class AdminModel {
       if (findUser.role === "AGENT") {
         payload.admin_id = findUser.created_by;
       }
-      console.log(payload, findUser);
 
 
       const jwtToken = await signJwt(payload);
@@ -133,8 +132,6 @@ class AdminModel {
       return next(new ErrorHandler(error.message, 500));
     }
   }
-
-
 
 
   static async AddUser(req, res, next) {
@@ -728,7 +725,6 @@ class AdminModel {
       let sumCallTimeIncoming = 0;
       await Promise.all(
         CallTimeIncoming.map((data) => {
-          console.log(data);
           if (data.talktime) {
             sumCallTimeIncoming =
               sumCallTimeIncoming +
@@ -1307,7 +1303,100 @@ class AdminModel {
     }
   }
   
+  static async AgentList(req, res, next) {
+    try {
+      let pipeline = [
+        {
+          $match: {
+            created_by: new mongoose.Types.ObjectId(req.authData._id),
+            created_by: { $exists: true },
+          },
+        },
+      ];
 
+      if (req.query.status) {
+        pipeline.push({
+          $match: {
+            status : req.query.status,
+          },
+        });
+      }
+
+      pipeline.push({
+        $sort : {
+          _id : 1
+        }
+      })
+     
+      let data = await User.aggregate(pipeline);
+      return res.status(200).json({
+        status: true,
+        code: 200,
+        message: "Details Fetched Successfully....",
+        data
+      });
+    } catch (error) {
+      return res.status(500).json({
+        status: false,
+        code: 500,
+        message: error.message,
+      });
+    }
+  }
+  
+  static async getAllCallList(req, res, next) {
+    try {
+        const admin_id = req.authData._id;
+
+        let pipeline = [];
+
+        pipeline.push({
+          $match : {
+            admin_id : new mongoose.Types.ObjectId(admin_id)
+          }
+        })
+
+        if(req.query.type){
+          pipeline.push({
+            $match : {
+              type : req.query.type
+            }
+          })
+        }
+
+
+        pipeline.push({
+          $lookup: {
+            from: "guest_details",
+            localField: "guest_id",
+            foreignField: "_id",
+            as: "guest",
+          },
+        },
+        {
+          $unwind: {
+            path: "$guest",
+            preserveNullAndEmptyArrays: false,
+          },
+        },)
+
+
+        const data = await CallDetail.aggregate(pipeline);
+        return res.status(200).json({
+          status: false,
+          code: 200,
+          message: "Data Fetched Successfully",
+          data
+        });
+
+    } catch (error) {
+      return res.status(500).json({
+        status: false,
+        code: 500,
+        message: error.message,
+      });
+    }
+  }
 }
 
 export default AdminModel;
