@@ -2,6 +2,7 @@ import fs from "fs";
 import User from "../model/User.js";
 import bcrypt from "bcryptjs";
 import Disposition from "../model/Disposition.js";
+import pause from "../model/PauseDropDown.js"
 const ROOT_DIR = resolve();
 import { join, resolve } from "path";
 
@@ -45,6 +46,31 @@ export async function seedDisposition() {
         if (!findDisposition) {
           const seeding = await Disposition.create({
             name: elem.name,
+          });
+          return seeding;
+        }
+      })
+    );
+    return true;
+  } catch (error) {
+    console.log("From Seeder Function", error);
+  }
+}
+
+export async function seedPauesReasons() {
+  try {
+    const filePath = join(ROOT_DIR, "utils/Static/pause_reasons.json");
+    const jsonString = await fs.readFileSync(filePath, "utf8");
+    const pauseReasons = JSON.parse(jsonString);
+
+    const data = await Promise.all(
+      pauseReasons.map(async (elem) => {
+        const findPause = await pause.findOne({
+          pause_reason: elem.pause_reason,
+        });
+        if (!findPause) {
+          const seeding = await pause.create({
+            pause_reason: elem.pause_reason,
           });
           return seeding;
         }

@@ -116,7 +116,9 @@ class AdminModel {
         payload.admin_id = findUser.created_by;
       }
 
+
       const jwtToken = await signJwt(payload);
+      
 
 
 
