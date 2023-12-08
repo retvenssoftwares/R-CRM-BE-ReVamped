@@ -1303,6 +1303,46 @@ class AdminModel {
     }
   }
   
+  static async AgentList(req, res, next) {
+    try {
+      let pipeline = [
+        {
+          $match: {
+            created_by: new mongoose.Types.ObjectId(req.authData._id),
+            created_by: { $exists: true },
+          },
+        },
+      ];
+
+      if (req.query.status) {
+        pipeline.push({
+          $match: {
+            status : req.query.status,
+          },
+        });
+      }
+
+      pipeline.push({
+        $sort : {
+          _id : 1
+        }
+      })
+     
+      let data = await User.aggregate(pipeline);
+      return res.status(200).json({
+        status: true,
+        code: 200,
+        message: "Details Fetched Successfully....",
+        data
+      });
+    } catch (error) {
+      return res.status(500).json({
+        status: false,
+        code: 500,
+        message: error.message,
+      });
+    }
+  }
 
 }
 
