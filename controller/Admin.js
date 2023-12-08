@@ -115,6 +115,7 @@ class AdminModel {
       if (findUser.role === "AGENT") {
         payload.admin_id = findUser.created_by;
       }
+      console.log(payload, findUser);
 
 
       const jwtToken = await signJwt(payload);
