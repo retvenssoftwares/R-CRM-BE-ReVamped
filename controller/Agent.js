@@ -9,6 +9,8 @@ import mongoose from "mongoose";
 import { randomString } from "../middleware/custom.js";
 import Disposition from "../model/Disposition.js";
 import log_in_log_out_time from "../model/LoginAndLogOut.js"
+import { seedPauesReasons } from "../utils/seeder.js";
+import pause_call_dropDown from "../model/PauseDropDown.js";
 class AgentModel {
   static async GuestInfo(req, res, next) {
     const { phone_number } = req.body;
@@ -101,6 +103,7 @@ class AgentModel {
       }
 
       let agent_id = req.authData._id;
+      let admin_id = req.authData.admin_id
       const {
         call_date,
         caller_type,
@@ -131,6 +134,7 @@ class AgentModel {
 
       }
 
+      console.log(req?.authData?.admin_id)
       let newCalls = await callDetails.create({
         agent_id,
         guest_id,
@@ -770,9 +774,10 @@ class AgentModel {
   }
 
   static async Pause(req, res, next) {
+    const reasons = await pause_call_dropDown.findOne({ _id: req.body.pause_reason });
     const add = await PauseCall.create({
       agent_id: req.body.agent_id,
-      pause_reason: req.body.pause_reason,
+      pause_reason: reasons.pause_reason,
       pause_time: req.body.pause_time,
       resume_time: req.body.resume_time,
     });
