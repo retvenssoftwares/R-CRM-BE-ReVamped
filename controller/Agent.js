@@ -103,6 +103,7 @@ class AgentModel {
       }
 
       let agent_id = req.authData._id;
+      let admin_id = req.authData.admin_id
       const {
         call_date,
         caller_type,
@@ -133,6 +134,7 @@ class AgentModel {
 
       }
 
+      console.log(req?.authData?.admin_id)
       let newCalls = await callDetails.create({
         agent_id,
         guest_id,
