@@ -27,4 +27,5 @@ router.get('/all-time-performer',verifyJwt, AdminModel.AllTimePerFormer);
 router.get('/today-performer',verifyJwt, AdminModel.TodayPerFormer);
 
 router.get('/agent-list',verifyJwt, AdminModel.AgentList);
+router.get('/get-all-calls',verifyJwt, AdminModel.getAllCallList);
 export default router

@@ -1343,7 +1343,60 @@ class AdminModel {
       });
     }
   }
+  
+  static async getAllCallList(req, res, next) {
+    try {
+        const admin_id = req.authData._id;
 
+        let pipeline = [];
+
+        pipeline.push({
+          $match : {
+            admin_id : new mongoose.Types.ObjectId(admin_id)
+          }
+        })
+
+        if(req.query.type){
+          pipeline.push({
+            $match : {
+              type : req.query.type
+            }
+          })
+        }
+
+
+        pipeline.push({
+          $lookup: {
+            from: "guest_details",
+            localField: "guest_id",
+            foreignField: "_id",
+            as: "guest",
+          },
+        },
+        {
+          $unwind: {
+            path: "$guest",
+            preserveNullAndEmptyArrays: false,
+          },
+        },)
+
+
+        const data = await CallDetail.aggregate(pipeline);
+        return res.status(200).json({
+          status: false,
+          code: 200,
+          message: "Data Fetched Successfully",
+          data
+        });
+
+    } catch (error) {
+      return res.status(500).json({
+        status: false,
+        code: 500,
+        message: error.message,
+      });
+    }
+  }
 }
 
 export default AdminModel;
