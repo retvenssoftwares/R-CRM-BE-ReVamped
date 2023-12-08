@@ -1,0 +1,25 @@
+[
+{
+"pause_reason":"Lunch"
+},
+
+{
+    "pause_reason":"Coffee"
+},
+
+{
+    "pause_reason":"TeamMeeting"
+},
+
+{
+    "pause_reason":"WashRoom"
+},
+
+{
+    "pause_reason":"Personal"
+},
+
+{
+    "pause_reason":"Others"
+}
+]
