@@ -1343,7 +1343,7 @@ class AdminModel {
       });
     }
   }
-  
+
   static async getAllCallList(req, res, next) {
     try {
         const admin_id = req.authData._id;
@@ -1378,7 +1378,20 @@ class AdminModel {
             path: "$guest",
             preserveNullAndEmptyArrays: false,
           },
-        },)
+        },{
+          $lookup: {
+            from: "users",
+            localField: "agent_id",
+            foreignField: "_id",
+            as: "agent",
+          },
+        },
+        {
+          $unwind: {
+            path: "$agent",
+            preserveNullAndEmptyArrays: false,
+          },
+        })
 
 
         const data = await CallDetail.aggregate(pipeline);
