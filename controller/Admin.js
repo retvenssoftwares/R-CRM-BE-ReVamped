@@ -1395,6 +1395,11 @@ class AdminModel {
         {
           $project: {
             _id: 1,
+            talktime:1,
+            start_time:1,
+            end_time:1,
+            call_date:1,
+            remark:1,
             guest_first_name: "$guest.guest_first_name",
             guest_last_name :  "$guest.guest_last_name",
             caller_id: "$guest.guest_mobile_number",
