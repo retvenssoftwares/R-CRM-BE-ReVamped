@@ -11,6 +11,7 @@ import Disposition from "../model/Disposition.js";
 import log_in_log_out_time from "../model/LoginAndLogOut.js"
 import { seedPauesReasons } from "../utils/seeder.js";
 import pause_call_dropDown from "../model/PauseDropDown.js";
+import { formatTime } from "../utils/formattime.js";
 class AgentModel {
   static async GuestInfo(req, res, next) {
     const { phone_number } = req.body;

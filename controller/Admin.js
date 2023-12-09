@@ -118,7 +118,7 @@ class AdminModel {
 
 
       const jwtToken = await signJwt(payload);
-      
+
 
 
 
@@ -1282,11 +1282,11 @@ class AdminModel {
       if (req.query.type) {
         condition.push({
           $match: {
-            type:req.query.type,
+            type: req.query.type,
           },
         });
       }
-     
+
       let findCalls = await CallDetail.aggregate(condition);
       return res.status(200).json({
         status: true,
@@ -1302,7 +1302,7 @@ class AdminModel {
       });
     }
   }
-  
+
   static async AgentList(req, res, next) {
     try {
       let pipeline = [
@@ -1317,17 +1317,17 @@ class AdminModel {
       if (req.query.status) {
         pipeline.push({
           $match: {
-            status : req.query.status,
+            status: req.query.status,
           },
         });
       }
 
       pipeline.push({
-        $sort : {
-          _id : 1
+        $sort: {
+          _id: 1
         }
       })
-     
+
       let data = await User.aggregate(pipeline);
       return res.status(200).json({
         status: true,
@@ -1346,61 +1346,76 @@ class AdminModel {
 
   static async getAllCallList(req, res, next) {
     try {
-        const admin_id = req.authData._id;
+      const admin_id = req.authData._id;
 
-        let pipeline = [];
+      let pipeline = [];
 
+      pipeline.push({
+        $match: {
+          admin_id: new mongoose.Types.ObjectId(admin_id)
+        }
+      })
+
+      if (req.query.type) {
         pipeline.push({
-          $match : {
-            admin_id : new mongoose.Types.ObjectId(admin_id)
+          $match: {
+            type: req.query.type
           }
         })
-
-        if(req.query.type){
-          pipeline.push({
-            $match : {
-              type : req.query.type
-            }
-          })
-        }
+      }
 
 
-        pipeline.push({
-          $lookup: {
-            from: "guest_details",
-            localField: "guest_id",
-            foreignField: "_id",
-            as: "guest",
-          },
+      pipeline.push({
+        $lookup: {
+          from: "guest_details",
+          localField: "guest_id",
+          foreignField: "_id",
+          as: "guest",
         },
+      },
         {
           $unwind: {
             path: "$guest",
             preserveNullAndEmptyArrays: false,
           },
-        },{
-          $lookup: {
-            from: "users",
-            localField: "agent_id",
-            foreignField: "_id",
-            as: "agent",
-          },
+        }, {
+        $lookup: {
+          from: "users",
+          localField: "agent_id",
+          foreignField: "_id",
+          as: "agent",
         },
+      },
         {
           $unwind: {
             path: "$agent",
             preserveNullAndEmptyArrays: false,
           },
-        })
+        },
+        {
+          $project: {
+            _id: 1,
+            guest_first_name: "$guest.guest_first_name",
+            guest_last_name :  "$guest.guest_last_name",
+            caller_id: "$guest.guest_mobile_number",
+            location: "$hotel_destination",
+            agent_name: "$agent.name",
+            disposition : 1,
+            type: 1,
+            agent_id: "$agent._id",
+            last_support_by : 1
+          }
+        }
+      )
 
 
-        const data = await CallDetail.aggregate(pipeline);
-        return res.status(200).json({
-          status: false,
-          code: 200,
-          message: "Data Fetched Successfully",
-          data
-        });
+      const data = await CallDetail.aggregate(pipeline);
+      return res.status(200).json({
+        status: false,
+        code: 200,
+        message: "Data Fetched Successfully",
+        data
+      });
 
     } catch (error) {
       return res.status(500).json({
