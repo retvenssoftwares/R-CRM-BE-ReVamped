@@ -1399,7 +1399,7 @@ class AdminModel {
             guest_last_name :  "$guest.guest_last_name",
             caller_id: "$guest.guest_mobile_number",
             location: "$hotel_destination",
-            agent_name: "$guest.name",
+            agent_name: "$agent.name",
             disposition : 1,
             type: 1,
             agent_id: "$agent._id",
