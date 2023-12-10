@@ -50,12 +50,12 @@ jobs:
 
         # this pm2 start function is used when server is restarted 
         # otherwise we will just use pm2 restart 0 and save
-      - name: Start server usingg pm2
-        run: |
-          pm2 restart 0
-          pm2 save
-        env: 
-          CI: true
+      #- name: Start server usingg pm2
+        #run: |
+          #pm2 restart 0
+          #pm2 save
+        #env: 
+          #CI: true
 
       - name: Start application
         run: |
