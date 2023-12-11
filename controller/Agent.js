@@ -776,7 +776,23 @@ class AgentModel {
 
   static async Pause(req, res, next) {
     try {
-      const {pause_reason, agent_id, resume_time,pause_time} = req.body
+      const {pause_reason, agent_id, resume_time, pause_time} = req.body
+
+      if(!pause_reason && !resume_time){
+        return res.status(401).json({
+          status: false,
+          code: 401,
+          data: "data id missing",
+        });
+      }
+
+      if(!pause_reason || !agent_id){
+        return res.status(401).json({
+          status: false,
+          code: 401,
+          data: "pause reason Id or agent id is missing",
+        });
+      }
 
       const reasons = await pause_call_dropDown.findOne({ _id: pause_reason });
 
