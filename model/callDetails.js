@@ -35,7 +35,7 @@ const call = new mongoose.Schema({
     //caller_type : { type : String},
     hotel_destination :{ type: String},
 
-});
+}, {timestamps : true});
 
 const data = new mongoose.model("calling_details", call);
 export default data;
