@@ -31,12 +31,40 @@ class GuestDeatils {
     }
 
     static async getAllGuestDetails(req, res, next) {
-        let findCalls ;
-        if(req.authData.role === 'ADMIN'){
-            findCalls = await Guest.find().lean()
-
-        }else if(req.authData.role === 'AGENT'){
-            findCalls = await Guest.find({agent_id:req.authData._id}).lean()
+        let findCalls;
+        if (req.authData.role === 'ADMIN') {
+            let pipeline = [{
+                $lookup: {
+                    from: "users",
+                    localField: "agent_id",
+                    foreignField: "_id",
+                    as: "agent",
+                },
+            },
+            {
+                $unwind: {
+                    path: "$agent",
+                    preserveNullAndEmptyArrays: false,
+                },
+            },
+            // {
+            //     $lookup: {
+            //         from: "calling_details",
+            //         localField: "agent_id",
+            //         foreignField: "agent_id",
+            //         as: "calling_details",
+            //     },
+            // },
+            // {
+            //     $unwind: {
+            //         path: "$calling_details",
+            //         preserveNullAndEmptyArrays: false,
+            //     },
+            // },
+        ];
+            findCalls = await Guest.aggregate(pipeline);
+        } else if (req.authData.role === 'AGENT') {
+            findCalls = await Guest.find({ agent_id: req.authData._id }).lean()
 
         }
 

@@ -118,7 +118,7 @@ class AdminModel {
 
 
       const jwtToken = await signJwt(payload);
-      
+
 
 
 
@@ -144,6 +144,7 @@ class AdminModel {
         let dob = req.body.dob;
         let phone_number = req.body.phone_number;
         let password = req.body.password;
+        let designation = req.body.designation;
 
         let findOldUser = await User.findOne({ email }).lean();
         let findAgent = await User.find({ role: "AGENT" }).lean();
@@ -169,6 +170,7 @@ class AdminModel {
             created_by: req.authData._id,
             // agent_id: (findAgent.length + 1) || 1,
             // agent_text: req.query.ext_name,
+            designation: designation,
             role: "AGENT",
           });
 
@@ -1282,11 +1284,11 @@ class AdminModel {
       if (req.query.type) {
         condition.push({
           $match: {
-            type:req.query.type,
+            type: req.query.type,
           },
         });
       }
-     
+
       let findCalls = await CallDetail.aggregate(condition);
       return res.status(200).json({
         status: true,
@@ -1302,7 +1304,7 @@ class AdminModel {
       });
     }
   }
-  
+
   static async AgentList(req, res, next) {
     try {
       let pipeline = [
@@ -1317,17 +1319,17 @@ class AdminModel {
       if (req.query.status) {
         pipeline.push({
           $match: {
-            status : req.query.status,
+            status: req.query.status,
           },
         });
       }
 
       pipeline.push({
-        $sort : {
-          _id : 1
+        $sort: {
+          _id: 1
         }
       })
-     
+
       let data = await User.aggregate(pipeline);
       return res.status(200).json({
         status: true,
@@ -1343,51 +1345,79 @@ class AdminModel {
       });
     }
   }
-  
+
   static async getAllCallList(req, res, next) {
     try {
-        const admin_id = req.authData._id;
+      const admin_id = req.authData._id;
 
-        let pipeline = [];
+      let pipeline = [];
 
+      pipeline.push({
+        $match: {
+          admin_id: new mongoose.Types.ObjectId(admin_id)
+        }
+      })
+
+      if (req.query.type) {
         pipeline.push({
-          $match : {
-            admin_id : new mongoose.Types.ObjectId(admin_id)
+          $match: {
+            type: req.query.type
           }
         })
-
-        if(req.query.type){
-          pipeline.push({
-            $match : {
-              type : req.query.type
-            }
-          })
-        }
+      }
 
 
-        pipeline.push({
-          $lookup: {
-            from: "guest_details",
-            localField: "guest_id",
-            foreignField: "_id",
-            as: "guest",
-          },
+      pipeline.push({
+        $lookup: {
+          from: "guest_details",
+          localField: "guest_id",
+          foreignField: "_id",
+          as: "guest",
         },
+      },
         {
           $unwind: {
             path: "$guest",
             preserveNullAndEmptyArrays: false,
           },
-        },)
+        }, {
+        $lookup: {
+          from: "users",
+          localField: "agent_id",
+          foreignField: "_id",
+          as: "agent",
+        },
+      },
+        {
+          $unwind: {
+            path: "$agent",
+            preserveNullAndEmptyArrays: false,
+          },
+        },
+        {
+          $project: {
+            _id: 1,
+            guest_first_name: "$guest.guest_first_name",
+            guest_last_name: "$guest.guest_last_name",
+            caller_id: "$guest.guest_mobile_number",
+            location: "$hotel_destination",
+            agent_name: "$agent.name",
+            disposition: 1,
+            type: 1,
+            agent_id: "$agent._id",
+            last_support_by: 1
+          }
+        }
+      )
 
 
-        const data = await CallDetail.aggregate(pipeline);
-        return res.status(200).json({
-          status: false,
-          code: 200,
-          message: "Data Fetched Successfully",
-          data
-        });
+      const data = await CallDetail.aggregate(pipeline);
+      return res.status(200).json({
+        status: false,
+        code: 200,
+        message: "Data Fetched Successfully",
+        data
+      });
 
     } catch (error) {
       return res.status(500).json({
@@ -1396,6 +1426,106 @@ class AdminModel {
         message: error.message,
       });
     }
+  }
+
+  static async getAllGuestListAdmin(req, res, next) {
+    let pipeline = [
+      {
+        $group: {
+          _id: "$guest_id",
+          items: { $push: "$$ROOT" }
+        }
+      },
+      {
+        $sort: {
+          // "items.createdAt" : -1
+          "call_date": -1
+        }
+      },
+      {
+        $project: {
+          guest_id: "$_id",
+          last_call: { $arrayElemAt: ["$items", 0] },
+          second_last_call: { $arrayElemAt: ["$items", 1] }
+        }
+      },
+      {
+        $lookup: {
+          from: "guest_details",
+          localField: "guest_id",
+          foreignField: "_id",
+          as: "guest",
+        },
+      },
+      {
+        $unwind: {
+          path: "$guest",
+          preserveNullAndEmptyArrays: false,
+        },
+      },
+      {
+        $project : {
+          "agent_id" : "$guest.agent_id",
+          "guest_id" : 1,
+          "last_call" :1,
+          "second_last_call_agent_id" : "$second_last_call.agent_id",
+          "guest" : 1
+        }
+      },
+      {
+        $lookup: {
+          from: "users",
+          localField: "agent_id",
+          foreignField: "_id",
+          as: "agent",
+        },
+      },
+      {
+        $unwind: {
+          path: "$agent",
+          preserveNullAndEmptyArrays: false,
+        },
+      },
+      {
+        $lookup: {
+          from: "users",
+          localField: "second_last_call_agent_id",
+          foreignField: "_id",
+          as: "second_last_call_agent",
+        },
+      },
+      {
+        $unwind: {
+          path: "$second_last_call_agent",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $project : {
+          guest_id : 1,
+          guest_first_name : "$guest.guest_first_name",
+          guest_last_name : "$guest.guest_last_name",
+          guest_email : "$guest.guest_email",
+          guest_mobile_number : "$guest.guest_mobile_number",
+          disposition_last_call : "$last_call.last_call",
+          last_call_date : "$last_call.call_date",
+          location : "$guest.location", // TODO
+          last_support_by : "$last_call.last_support_by",
+          agent_name : "$agent.name",
+          agent_id : 1,
+          second_last_call_agent_name : "$second_last_call_agent.name",
+        }
+      }
+    ];
+
+    const data = await callDetail.aggregate(pipeline);
+
+    return res.status(200).json({
+      success: true,
+      code: 200,
+      data
+    });
+
   }
 }
 

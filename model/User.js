@@ -47,6 +47,7 @@ const userSchema = new Schema(
     agentext:{type:Number},
     coral_admin_username : {type : String},
     coral_admin_password : {type : String},
+    designation : {type : String}
   },
   { versionKey: false, timestamp : true }
 );
