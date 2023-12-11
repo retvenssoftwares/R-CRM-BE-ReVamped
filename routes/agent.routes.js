@@ -17,6 +17,8 @@ router.get('/disposition_graph',verifyJwt,Agent.dispositionGraph)
 router.post("/pause_calls",verifyJwt,AgentModel.Pause)
 router.get("/get_pause_call",verifyJwt,AgentModel.GetPauseCall)
 router.post("/logOut",verifyJwt,AgentModel.logOut)
+router.patch("/updateAgent",verifyJwt,AgentModel.updateAgent)
+router.get("/getPauseReasons",Agent.GetPauseReason)
 
 
 

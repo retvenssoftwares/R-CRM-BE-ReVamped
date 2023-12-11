@@ -25,14 +25,14 @@ const call = new mongoose.Schema({
     hang_up_by: { type: String },
     guest_status: { type: String },
     remark: { type: String },
-    purpose_of_travel :{ type: String},
+    purpose_of_travel :{ type: String, enum : ['WEDDING', 'COUPLE','BUSINESS','FAMILY','OTHER'] },
     departure_date :{ type: String},
     arrival_date:{ type: String},
     special_occassion:{ type: String},
     reservationId : {type:String},
     call_back_date_time :{ type: String},
     department :{ type : String , enum : ['MARKETING', 'SALES','RESERVATION'] },
-    //caller_type : { type : String},
+    caller_type : { type : String, enum : ['INTERNAL_TRANSFER', 'HOTELS','GUEST'] },
     hotel_destination :{ type: String},
 
 }, {timestamps : true});

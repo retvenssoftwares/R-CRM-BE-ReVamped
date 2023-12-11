@@ -1,4 +1,4 @@
-import bcryptjs from "bcryptjs";
+import bcrypt from "bcryptjs";
 import callDetails from "../model/callDetails.js";
 // import Guest from '../model/Guest.js'
 import User from "../model/User.js";
@@ -128,10 +128,10 @@ class AgentModel {
         special_occassion,
       } = req.body;
 
-    
+
       let hotel_destination = ''
-      if(req.body.hotel_destination){
-         hotel_destination =  req?.body?.hotel_destination.toUpperCase()
+      if (req.body.hotel_destination) {
+        hotel_destination = req?.body?.hotel_destination.toUpperCase()
 
       }
 
@@ -139,7 +139,7 @@ class AgentModel {
       let newCalls = await callDetails.create({
         agent_id,
         guest_id,
-        call_date : JSON.stringify(new Date()).split("T")[0].slice(1),
+        call_date: JSON.stringify(new Date()).split("T")[0].slice(1),
         caller_type,
         start_time,
         end_time,
@@ -164,7 +164,7 @@ class AgentModel {
         special_occassion,
       });
 
- 
+
       return res.status(200).json({
         status: true,
         code: 200,
@@ -296,7 +296,7 @@ class AgentModel {
       const CallTimeIncoming = await callDetails.aggregate([
         {
           $match: {
-             agent_id: new mongoose.Types.ObjectId(req.authData._id), 
+            agent_id: new mongoose.Types.ObjectId(req.authData._id),
             type: "Inbound",
             talktime: { $exists: true },
           },
@@ -305,7 +305,7 @@ class AgentModel {
       const CallTimeOutgoing = await callDetails.aggregate([
         {
           $match: {
-            agent_id: new mongoose.Types.ObjectId(req.authData._id), 
+            agent_id: new mongoose.Types.ObjectId(req.authData._id),
             type: "Outbound",
             talktime: { $exists: true },
           },
@@ -314,66 +314,66 @@ class AgentModel {
 
       let sumCallTimeOutgoing = 0;
       await Promise.all(CallTimeOutgoing.map((data) => {
-        if(data.talktime){
-          sumCallTimeOutgoing = sumCallTimeOutgoing + parseInt(data.talktime.split(":")[0])*3600 + parseInt(data.talktime.split(":")[1])*60 + parseInt(data.talktime.split(":")[2]);
+        if (data.talktime) {
+          sumCallTimeOutgoing = sumCallTimeOutgoing + parseInt(data.talktime.split(":")[0]) * 3600 + parseInt(data.talktime.split(":")[1]) * 60 + parseInt(data.talktime.split(":")[2]);
         }
       }))
 
       let sumCallTimeIncoming = 0;
       await Promise.all(CallTimeIncoming.map((data) => {
-        if(data.talktime){
-          sumCallTimeIncoming = sumCallTimeIncoming + parseInt(data.talktime.split(":")[0])*3600 + parseInt(data.talktime.split(":")[1])*60 + parseInt(data.talktime.split(":")[2]);
+        if (data.talktime) {
+          sumCallTimeIncoming = sumCallTimeIncoming + parseInt(data.talktime.split(":")[0]) * 3600 + parseInt(data.talktime.split(":")[1]) * 60 + parseInt(data.talktime.split(":")[2]);
         }
       }))
 
-      const avgCallTimeIncoming = sumCallTimeIncoming/CallTimeIncoming.length;
-      const avgCallTimeOutgoing = sumCallTimeOutgoing/CallTimeOutgoing.length;
+      const avgCallTimeIncoming = sumCallTimeIncoming / CallTimeIncoming.length;
+      const avgCallTimeOutgoing = sumCallTimeOutgoing / CallTimeOutgoing.length;
 
       let data1 = [
-          {
-            type: "Total Calls",
-            totalCalls: total_call,
-            Inbound: total_incoming_call,
-            Outbound: total_outgoing_call,
-          },
-          {
-            type: "Average Call Time",
-            avgCallTimeOutgoing: formatTime(avgCallTimeOutgoing),
-            avgCallTimeIncoming: formatTime(avgCallTimeIncoming),
-          },
-          {
-            type: "Reservation Calls Today",
-            reservationCallsToday: reservation_today,
-            reservationIncommingCalls: reservation_incoming_today,
-            reservationOutgoingCallsToday: reservation_outgoing_today,
-          },
-          {
-            type: "Total Reservation Calls",
-            reservationCalls: reservation_call,
-            reservationIncommingCallsToday: reservation_incoming_call,
-            reservationOutgoingCalls: reservation_outgoing_call,
-          },
-          {
-            type: "Calls Today",
-            totalCalls: today_call,
-            Inbound: today_incoming_call,
-            Outbound: today_outgoing_call,
-          },
-          {
-            type: "Missed Calls",
-            missedCalls: total_missed_call,
-          },        
-        
-          {
-            type: "Abandoned Calls",
-            abandonedCalls: abandoned,
-          },
-          {
-            type: "No Answer",
-            noAnswer: no_answer,
-          },
-        ]
- 
+        {
+          type: "Total Calls",
+          totalCalls: total_call,
+          Inbound: total_incoming_call,
+          Outbound: total_outgoing_call,
+        },
+        {
+          type: "Average Call Time",
+          avgCallTimeOutgoing: formatTime(avgCallTimeOutgoing),
+          avgCallTimeIncoming: formatTime(avgCallTimeIncoming),
+        },
+        {
+          type: "Reservation Calls Today",
+          reservationCallsToday: reservation_today,
+          reservationIncommingCalls: reservation_incoming_today,
+          reservationOutgoingCallsToday: reservation_outgoing_today,
+        },
+        {
+          type: "Total Reservation Calls",
+          reservationCalls: reservation_call,
+          reservationIncommingCallsToday: reservation_incoming_call,
+          reservationOutgoingCalls: reservation_outgoing_call,
+        },
+        {
+          type: "Calls Today",
+          totalCalls: today_call,
+          Inbound: today_incoming_call,
+          Outbound: today_outgoing_call,
+        },
+        {
+          type: "Missed Calls",
+          missedCalls: total_missed_call,
+        },
+
+        {
+          type: "Abandoned Calls",
+          abandonedCalls: abandoned,
+        },
+        {
+          type: "No Answer",
+          noAnswer: no_answer,
+        },
+      ]
+
       return res.status(200).json({
         status: true,
         code: 200,
@@ -608,12 +608,12 @@ class AgentModel {
             as: "assigened_user",
           },
         },
-        {
-          $unwind: {
-            path: "$assigened_user",
-            preserveNullAndEmptyArrays: false,
-          },
-        },);
+          {
+            $unwind: {
+              path: "$assigened_user",
+              preserveNullAndEmptyArrays: false,
+            },
+          },);
       }
 
       if (req.authData.role === "ADMIN") {
@@ -692,12 +692,12 @@ class AgentModel {
       if (req.query.type) {
         condition.push({
           $match: {
-            type:req.query.type,
+            type: req.query.type,
           },
         });
       }
 
-     
+
       if (req.query.abandoned) {
         condition.push({
           $match: {
@@ -775,22 +775,59 @@ class AgentModel {
   }
 
   static async Pause(req, res, next) {
-    const reasons = await pause_call_dropDown.findOne({ _id: req.body.pause_reason });
-    const add = await PauseCall.create({
-      agent_id: req.body.agent_id,
-      pause_reason: reasons.pause_reason,
-      pause_time: req.body.pause_time,
-      resume_time: req.body.resume_time,
-    });
+    try {
+      const {pause_reason, agent_id, resume_time,pause_time} = req.body
 
-    await add.save();
+      const reasons = await pause_call_dropDown.findOne({ _id: pause_reason });
 
+      if(!reasons){
+        return res.status(401).json({
+          status: false,
+          code: 401,
+          data: "data not found..",
+        });
+      }
+      
+      const pauseCall = new PauseCall({
+        agent_id: agent_id,
+        pause_reason: reasons.pause_reason,
+        pause_time: pause_time,
+        resume_time: resume_time,
+      });
+  
+      await pauseCall.save();
+  
+      return res.status(200).json({
+        status: true,
+        code: 200,
+        data: "Pause reasons added..",
+      });
+    } catch (error) {
+      console.error('Error in Pause:', error);
+      return res.status(500).json({
+        status: false,
+        code: 500,
+        error: 'Internal Server Error',
+      });
+    }
+  }
+
+  static async GetPauseReason(req,res,next){
+    const findReasons = await pause_call_dropDown.find({})
+    if(!findReasons){
+      return res.status(401).json({
+        status: true,
+        code: 401,
+        data: "no data found",
+      });
+    }
     return res.status(200).json({
       status: true,
       code: 200,
-      data: "Pause reasons added..",
+      data: findReasons,
     });
   }
+  
 
   static async GetPauseCall(req, res, next) {
     const findPause = await PauseCall.find({
@@ -1008,7 +1045,7 @@ class AgentModel {
 
 
   static async logOut(req, res, next) {
-    const {password, log_out_time } = req.body
+    const { password, log_out_time } = req.body
     const email = req.authData.email
     console.log(email)
     if (!email && !password) {
@@ -1050,16 +1087,86 @@ class AgentModel {
       { upsert: true }
     );
 
-   if(logout){
-    return res.status(200).json({
-      status: true,
-      code: 200,
-      message: "logout successfully",
-    });
-   }
+    if (logout) {
+      return res.status(200).json({
+        status: true,
+        code: 200,
+        message: "logout successfully",
+      });
+    }
 
 
   }
+
+
+  static async updateAgent(req, res, next) {
+
+    if (req.authData.role === "ADMIN") {
+      const { _id, first_name, gender, date_of_birth, contact, email, department, designation, password } = req.body;
+
+      if (!_id) {
+        return res.status(401).json({
+          status: false,
+          code: 401,
+          message: "_id is missing",s
+        });
+      }
+
+      if (first_name && gender && date_of_birth && contact && email && department && designation && password) {
+        return res.status(401).json({
+          status: false,
+          code: 401,
+          message: "fields are missing",
+        });
+      }
+
+
+      try {
+        let updateFields = {
+          name: first_name,
+          email: email,
+          phone_number: contact,
+          designation: designation,
+          department: department,
+          gender: gender,
+          date_of_birth: date_of_birth,
+        };
+
+        if (password) {
+          const encryptedPassword = await bcrypt.hash(password, 10);
+          updateFields.password = encryptedPassword;
+        }
+
+        const updated = await User.updateOne({ _id: _id }, { $set: updateFields });
+
+        if (updated) {
+          return res.status(200).json({
+            status: true,
+            code: 200,
+            message: "User updated successfully",
+          });
+        }
+
+      } catch (error) {
+        // Handle errors
+        return res.status(500).json({
+          status: false,
+          code: 500,
+          message: "Something wrong",
+        });
+      }
+
+    }else{
+      return res.status(401).json({
+        status: false,
+        code: 401,
+        message: "Not Authorized",
+      });
+    }
+
+
+  }
+
 
 }
 

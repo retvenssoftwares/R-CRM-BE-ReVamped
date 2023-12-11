@@ -80,14 +80,16 @@ class GuestDeatils {
     static async updateGuestDeatils(req,res,next){
         await Guest.updateOne(
             {guest_mobile_number : req.query.guest_mobile_number},
-
             {
                 $set :{
-                    
+                    guest_first_name:req.body.guest_first_name,
+                    guest_last_name : req.bdy.guest_last_name,
+                    guest_mobile_number : req.body.guest_mobile_number,
+                    guest_address_1 : req.body.guest_address_1,
+                    guest_address_2 : req.body.guest_address_2,
+                    alternate_contact : req.body.alternate_contact
                 }
             }
-
-            
         )
     }
 
