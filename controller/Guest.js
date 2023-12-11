@@ -5,10 +5,11 @@ import callsDetails from "../model/callDetails.js"
 
 class GuestDeatils {
     static async getCallAndGuestDetails(req, res, next) {
-        const guest_id = req.query.guest_id
+        const  guest_mobile_number = req.query.guest_mobile_number
+        
         let findCalls = await Guest.aggregate([{
             $match: {
-                _id: new mongoose.Types.ObjectId(guest_id) // Replace with the actual guestId you want to match
+                guest_mobile_number : guest_mobile_number // Replace with the actual guestId you want to match
             }
         },
         {
@@ -74,6 +75,20 @@ class GuestDeatils {
             data: findCalls
         });
 
+    }
+
+    static async updateGuestDeatils(req,res,next){
+        await Guest.updateOne(
+            {guest_mobile_number : req.query.guest_mobile_number},
+
+            {
+                $set :{
+                    
+                }
+            }
+
+            
+        )
     }
 
 
