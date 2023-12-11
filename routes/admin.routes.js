@@ -28,4 +28,6 @@ router.get('/today-performer',verifyJwt, AdminModel.TodayPerFormer);
 
 router.get('/agent-list',verifyJwt, AdminModel.AgentList);
 router.get('/get-all-calls',verifyJwt, AdminModel.getAllCallList);
+
+router.get('/get-all-guest',verifyJwt, AdminModel.getAllGuestListAdmin);
 export default router

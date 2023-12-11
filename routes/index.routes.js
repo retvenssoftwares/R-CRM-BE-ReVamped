@@ -1,6 +1,6 @@
 import agentRouter from "./agent.routes.js"
 import AdminRouter from './admin.routes.js'
-import GuestRouter from "./guest.router.js"
+import GuestRouter from "./guest.routes.js"
 function initialize(app) {
   app.use("/api/admin", AdminRouter)
   app.use('/api/Agent', agentRouter);
