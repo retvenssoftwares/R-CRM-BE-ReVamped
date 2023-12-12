@@ -1305,7 +1305,7 @@ class AdminModel {
   }
 
   static async AgentList(req, res, next) {
-    console.log(req.authData._id)
+
     try {
       let pipeline = [
         {

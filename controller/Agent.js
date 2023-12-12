@@ -40,11 +40,7 @@ class AgentModel {
 
       let findGuest = await guestDetail.findOne({ guest_mobile_number }).lean();
       if (findGuest) {
-        return res.status(409).json({
-          status: false,
-          code: 409,
-          message: "User already exists",
-        });
+        return { findGuest }
       } else {
         const {
           salutation,
@@ -60,53 +56,64 @@ class AgentModel {
           country,
         } = req.body;
 
-        let agent_id = req.authData._id;
-
-        let newGuest = await guestDetail.create({
-          agent_id,
-          salutation,
-          guest_first_name,
-          guest_last_name,
-          guest_mobile_number,
-          alternate_contact,
-          email,
-          guest_address_1,
-          guest_address_2,
-          city,
-          state,
-          country,
-        });
-        // return res.status(200).json({
-        //     status: true,
-        //     code: 200,
-        //     message: "User added",
-        //     data: newGuest
-        // });
-
-        return newGuest;
+        if (req.authData.role === "ADMIN") {
+          let role = req.authData.role
+          return { role }
+        } else {
+          let agent_id = req.authData._id;
+          let newGuest = await guestDetail.create({
+            agent_id,
+            salutation,
+            guest_first_name,
+            guest_last_name,
+            guest_mobile_number,
+            alternate_contact,
+            email,
+            guest_address_1,
+            guest_address_2,
+            city,
+            state,
+            country,
+          });
+          return newGuest;
+        }
       }
+
+      // console.log(newGuest)
     } catch (error) {
       return res.status(500).json({
         status: false,
         code: 500,
         message: error.message,
       });
+
     }
   }
+
 
   static async AddCall(req, res, next) {
     try {
       let guest_id = req?.body?.guest_id;
-
       if (!req.body.guest_id) {
-        let newuser = await AgentModel.AddGuest(req);
+        let newuser = await AgentModel.AddGuest(req, res);
+        if (newuser.findGuest) {
+          return res.status(409).json({
+            status: false,
+            code: 409,
+            message: "User Already exist",
+          });
+        } else if (newuser.role) {
+          return res.status(401).json({
+            status: false,
+            code: 401,
+            message: "Admin is not allowed to add guest",
+          });
+        }
         guest_id = newuser._id;
       }
 
       let agent_id = req.authData._id;
-      let admin_id = req.authData.admin_id
       const {
-        call_date,
         caller_type,
         start_time,
         end_time,
@@ -134,9 +141,6 @@ class AgentModel {
         hotel_destination = req?.body?.hotel_destination.toUpperCase()
 
       }
-
-
-
 
       let newCalls = await callDetails.create({
         agent_id,
@@ -166,15 +170,14 @@ class AgentModel {
         special_occassion,
       });
 
-
-
-
       return res.status(200).json({
         status: true,
         code: 200,
         message: "Call detail added...",
         data: newCalls,
       });
+
+
     } catch (error) {
       return res.status(500).json({
         status: false,
