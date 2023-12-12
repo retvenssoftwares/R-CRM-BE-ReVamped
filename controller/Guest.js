@@ -35,6 +35,7 @@ class GuestDeatils {
         let findCalls;
         // const {startDate, endDate}= req.query
         if (req.authData.role === 'ADMIN') {
+            
             let pipeline = [{
                 $lookup: {
                     from: "users",
