@@ -34,6 +34,7 @@ class GuestDeatils {
     static async getAllGuestDetails(req, res, next) {
         let findCalls;
         if (req.authData.role === 'ADMIN') {
+            
             let pipeline = [{
                 $lookup: {
                     from: "users",

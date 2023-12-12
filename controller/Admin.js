@@ -1305,12 +1305,12 @@ class AdminModel {
   }
 
   static async AgentList(req, res, next) {
+    console.log(req.authData._id)
     try {
       let pipeline = [
         {
           $match: {
             created_by: new mongoose.Types.ObjectId(req.authData._id),
-            created_by: { $exists: true },
           },
         },
       ];
@@ -1334,7 +1334,7 @@ class AdminModel {
         status: true,
         code: 200,
         message: "Details Fetched Successfully....",
-        data
+        data:data.reverse(),
       });
     } catch (error) {
       return res.status(500).json({
@@ -1363,6 +1363,26 @@ class AdminModel {
             type: req.query.type
           }
         })
+      }
+
+      if (req.query.from && req.query.to) {
+        // Parse the date strings to JavaScript Date objects
+        const fromDate = new Date(req.query.from);
+        const toDate = new Date(req.query.to);
+
+        // Format the dates to yyyy-mm-dd format
+        const formattedFromDate = fromDate.toISOString().split("T")[0];
+        const formattedToDate = toDate.toISOString().split("T")[0];
+
+        // Add a $match stage to filter by date range
+        pipeline.push({
+          $match: {
+            call_date: {
+              $gte: formattedFromDate,
+              $lte: formattedToDate
+            }
+          }
+        });
       }
 
 
@@ -1420,10 +1440,11 @@ class AdminModel {
         status: false,
         code: 200,
         message: "Data Fetched Successfully",
-        data
+        data:data.reverse(),
       });
 
     } catch (error) {
+      console.log(error)
       return res.status(500).json({
         status: false,
         code: 500,
