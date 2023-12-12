@@ -1379,7 +1379,9 @@ class AdminModel {
             path: "$guest",
             preserveNullAndEmptyArrays: false,
           },
-        }, {
+        },
+
+        {
         $lookup: {
           from: "users",
           localField: "agent_id",

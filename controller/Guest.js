@@ -33,6 +33,7 @@ class GuestDeatils {
 
     static async getAllGuestDetails(req, res, next) {
         let findCalls;
+        // const {startDate, endDate}= req.query
         if (req.authData.role === 'ADMIN') {
             let pipeline = [{
                 $lookup: {
@@ -66,50 +67,51 @@ class GuestDeatils {
             findCalls = await Guest.aggregate(pipeline);
         } else if (req.authData.role === 'AGENT') {
 
-            let pipeline = [{
-                $match: {
-                    agent_id: req.authData._id
+ 
+            let pipeline = [
+                {
+                    $match: {
+                        agent_id:  new mongoose.Types.ObjectId(req.authData._id)
+                    }
                 },
-
-                $lookup: {
-                    from: "users",
-                    localField: "agent_id",
-                    foreignField: "_id",
-                    as: "agent",
+                {
+                    $lookup: {
+                        from: "users",
+                        localField: "agent_id",
+                        foreignField: "_id",
+                        as: "agent",
+                    }
                 },
-
-
-                $unwind: {
-                    path: "$agent",
-                    preserveNullAndEmptyArrays: false,
+                {
+                    $unwind: {
+                        path: "$agent",
+                        preserveNullAndEmptyArrays: false,
+                    }
                 },
-
-                $project:{
-                    name : "$agent.name",
-                    agent_id:"$agent.agent_id",
-                    guest_first_name:1,
-                    guest_last_name:1,
-                    city:1,
-                    state:1,
-                    country:1,
-                    salutation:1,
-                    guest_mobile_number:1,
-                    guest_address_1:1,
-                    createdAt:1,
-                    updatedAt:1
-
+                {
+                    $project: {
+                        name: "$agent.name",
+                        agent_id: "$agent._id",
+                        guest_first_name: 1,
+                        guest_last_name: 1,
+                        city: 1,
+                        state: 1,
+                        country: 1,
+                        salutation: 1,
+                        guest_mobile_number: 1,
+                        guest_address_1: 1,
+                        createdAt: 1,
+                        updatedAt: 1
+                    }
                 }
-
-            }]
-
-            findCalls = await Guest.aggregate(pipeline)
-
+            ];
+            findCalls = await Guest.aggregate(pipeline);
         }
 
         return res.status(200).json({
             success: true,
             code: 200,
-            data: findCalls
+            data: findCalls.reverse()
         });
 
     }

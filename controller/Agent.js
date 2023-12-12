@@ -135,9 +135,9 @@ class AgentModel {
 
       }
 
-    
 
-     
+
+
       let newCalls = await callDetails.create({
         agent_id,
         guest_id,
@@ -166,7 +166,7 @@ class AgentModel {
         special_occassion,
       });
 
-      
+
 
 
       return res.status(200).json({
@@ -548,9 +548,6 @@ class AgentModel {
               {
                 disposition: disposition,
               },
-              {
-                disposition: disposition,
-              },
             ],
           },
         });
@@ -715,6 +712,8 @@ class AgentModel {
         });
       }
 
+
+
       if (req.query.type) {
         condition.push({
           $match: {
@@ -732,21 +731,42 @@ class AgentModel {
         });
       }
 
+      if (req.query.from && req.query.to) {
+        // Parse the date strings to JavaScript Date objects
+        const fromDate = new Date(req.query.from);
+        const toDate = new Date(req.query.to);
+
+        // Format the dates to yyyy-mm-dd format
+        const formattedFromDate = fromDate.toISOString().split("T")[0];
+        const formattedToDate = toDate.toISOString().split("T")[0];
+
+        // Add a $match stage to filter by date range
+        condition.push({
+          $match: {
+            call_date: {
+              $gte: formattedFromDate,
+              $lte: formattedToDate
+            }
+          }
+        });
+      }
+
+
       condition.push({
-        $project : {
-          _id : 1,
-          guest_first_name : "$guest.guest_first_name",
-          guest_last_name : "$guest.guest_last_name",
-          agent_name : "$agent.name",
-          type : 1,
-          caller_id : "$guest.guest_mobile_number",
-          location : "$hotel_destination",
-          agent_id : 1,
-          disposition : 1,
-          last_support_by : 1,
-          start_time : 1,
-          call_date : 1,
-          talktime : 1
+        $project: {
+          _id: 1,
+          guest_first_name: "$guest.guest_first_name",
+          guest_last_name: "$guest.guest_last_name",
+          agent_name: "$agent.name",
+          type: 1,
+          caller_id: "$guest.guest_mobile_number",
+          location: "$hotel_destination",
+          agent_id: 1,
+          disposition: 1,
+          last_support_by: 1,
+          start_time: 1,
+          call_date: 1,
+          talktime: 1
         }
       })
       let findCalls = await callDetails.aggregate(condition);
@@ -754,7 +774,7 @@ class AgentModel {
         status: true,
         code: 200,
         message: "Details....",
-        data: findCalls,
+        data: findCalls.reverse(),
       });
     } catch (error) {
       return res.status(500).json({
@@ -820,43 +840,43 @@ class AgentModel {
 
   static async Pause(req, res, next) {
     try {
-      const {pause_reason, agent_id, resume_time, pause_time} = req.body
+      const { pause_reason, agent_id, resume_time, pause_time } = req.body
 
-      if(!pause_reason && !resume_time){
+      // if(!pause_reason && !resume_time){
+      //   return res.status(401).json({
+      //     status: false,
+      //     code: 401,
+      //     data: "data id missing",
+      //   });
+      // }
+
+      if (!agent_id) {
         return res.status(401).json({
           status: false,
           code: 401,
-          data: "data id missing",
-        });
-      }
-
-      if(!pause_reason || !agent_id){
-        return res.status(401).json({
-          status: false,
-          code: 401,
-          data: "pause reason Id or agent id is missing",
+          data: "agent id is missing",
         });
       }
 
       const reasons = await pause_call_dropDown.findOne({ _id: pause_reason });
 
-      if(!reasons){
+      if (!reasons) {
         return res.status(401).json({
           status: false,
           code: 401,
           data: "data not found..",
         });
       }
-      
+
       const pauseCall = new PauseCall({
         agent_id: agent_id,
         pause_reason: reasons.pause_reason,
         pause_time: pause_time,
         resume_time: resume_time,
       });
-  
+
       await pauseCall.save();
-  
+
       return res.status(200).json({
         status: true,
         code: 200,
@@ -872,9 +892,9 @@ class AgentModel {
     }
   }
 
-  static async GetPauseReason(req,res,next){
+  static async GetPauseReason(req, res, next) {
     const findReasons = await pause_call_dropDown.find({})
-    if(!findReasons){
+    if (!findReasons) {
       return res.status(401).json({
         status: true,
         code: 401,
@@ -887,7 +907,7 @@ class AgentModel {
       data: findReasons,
     });
   }
-  
+
 
   static async GetPauseCall(req, res, next) {
     const findPause = await PauseCall.find({
@@ -1168,7 +1188,7 @@ class AgentModel {
         return res.status(401).json({
           status: false,
           code: 401,
-          message: "_id is missing",s
+          message: "_id is missing",
         });
       }
 
@@ -1216,7 +1236,7 @@ class AgentModel {
         });
       }
 
-    }else{
+    } else {
       return res.status(401).json({
         status: false,
         code: 401,
