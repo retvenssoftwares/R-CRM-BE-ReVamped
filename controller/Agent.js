@@ -679,6 +679,41 @@ class AgentModel {
             agent_id: new mongoose.Types.ObjectId(req.authData._id),
           },
         },
+        {
+          $lookup: {
+            from: "users",
+            localField: "agent_id",
+            foreignField: "_id",
+            as: "agent",
+          },
+        },
+        {
+          $unwind: "$agent",
+        },
+        {
+          $lookup: {
+            from: "guest_details",
+            localField: "guest_id",
+            foreignField: "_id",
+            as: "guest",
+          },
+        },
+        {
+          $unwind: "$guest",
+        },
+        {
+          $project : {
+            _id : 1,
+            guest_first_name : "$guest.guest_first_name",
+            guest_last_name : "$guest.guest_last_name",
+            agent_name : "$agent.name",
+            type : 1,
+            caller_id : "$guest.guest_mobile_number",
+            agent_id : 1,
+            disposition : 1,
+            last_support_by : 1
+          }
+        }
       ];
 
       if (req.query.missed) {
