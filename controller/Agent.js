@@ -683,6 +683,28 @@ class AgentModel {
             agent_id: new mongoose.Types.ObjectId(req.authData._id),
           },
         },
+        {
+          $lookup: {
+            from: "users",
+            localField: "agent_id",
+            foreignField: "_id",
+            as: "agent",
+          },
+        },
+        {
+          $unwind: "$agent",
+        },
+        {
+          $lookup: {
+            from: "guest_details",
+            localField: "guest_id",
+            foreignField: "_id",
+            as: "guest",
+          },
+        },
+        {
+          $unwind: "$guest",
+        }
       ];
 
       if (req.query.missed) {
@@ -709,6 +731,24 @@ class AgentModel {
           },
         });
       }
+
+      condition.push({
+        $project : {
+          _id : 1,
+          guest_first_name : "$guest.guest_first_name",
+          guest_last_name : "$guest.guest_last_name",
+          agent_name : "$agent.name",
+          type : 1,
+          caller_id : "$guest.guest_mobile_number",
+          location : "$hotel_destination",
+          agent_id : 1,
+          disposition : 1,
+          last_support_by : 1,
+          start_time : 1,
+          call_date : 1,
+          talktime : 1
+        }
+      })
       let findCalls = await callDetails.aggregate(condition);
       return res.status(200).json({
         status: true,
