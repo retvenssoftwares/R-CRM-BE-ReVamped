@@ -33,88 +33,58 @@ class GuestDeatils {
 
     static async getAllGuestDetails(req, res, next) {
         let findCalls;
-        // const {startDate, endDate}= req.query
-        if (req.authData.role === 'ADMIN') {
-            
-            let pipeline = [{
-                $lookup: {
-                    from: "users",
-                    localField: "agent_id",
-                    foreignField: "_id",
-                    as: "agent",
-                },
-            },
-            {
-                $unwind: {
-                    path: "$agent",
-                    preserveNullAndEmptyArrays: false,
-                },
-            },
-                // {
-                //     $lookup: {
-                //         from: "calling_details",
-                //         localField: "agent_id",
-                //         foreignField: "agent_id",
-                //         as: "calling_details",
-                //     },
-                // },
-                // {
-                //     $unwind: {
-                //         path: "$calling_details",
-                //         preserveNullAndEmptyArrays: false,
-                //     },
-                // },
-            ];
-            findCalls = await Guest.aggregate(pipeline);
-        } else if (req.authData.role === 'AGENT') {
 
- 
+        if (req.authData.role === 'ADMIN') {
+            const adminId = req.authData._id; // Assuming admin's _id is available in req.authData
+           
             let pipeline = [
                 {
                     $match: {
-                        agent_id:  new mongoose.Types.ObjectId(req.authData._id)
+                        created_by: new mongoose.Types.ObjectId(adminId)
                     }
                 },
                 {
                     $lookup: {
-                        from: "users",
-                        localField: "agent_id",
-                        foreignField: "_id",
-                        as: "agent",
-                    }
-                },
-                {
-                    $unwind: {
-                        path: "$agent",
-                        preserveNullAndEmptyArrays: false,
-                    }
-                },
-                {
-                    $project: {
-                        name: "$agent.name",
-                        agent_id: "$agent._id",
-                        guest_first_name: 1,
-                        guest_last_name: 1,
-                        city: 1,
-                        state: 1,
-                        country: 1,
-                        salutation: 1,
-                        guest_mobile_number: 1,
-                        guest_address_1: 1,
-                        createdAt: 1,
-                        updatedAt: 1
+                        from: "guest_details", // Replace "guests" with the actual collection name
+                        localField: "_id",
+                        foreignField: "agent_id",
+                        as: "guests"
                     }
                 }
             ];
-            findCalls = await Guest.aggregate(pipeline);
+
+            try {
+                findCalls = await User.aggregate(pipeline);
+                return res.status(200).json({
+                    success: true,
+                    code: 200,
+                    data: findCalls.reverse()
+                });
+            } catch (err) {
+                // Handle error appropriately
+                return res.status(500).json({
+                    success: false,
+                    code: 500,
+                    error: err.message
+                });
+            }
+        } else if (req.authData.role === 'AGENT') {
+            try {
+                findCalls = await Guest.find({ agent_id: req.authData._id }).lean();
+                return res.status(200).json({
+                    success: true,
+                    code: 200,
+                    data: findCalls.reverse()
+                });
+            } catch (err) {
+                // Handle error appropriately
+                return res.status(500).json({
+                    success: false,
+                    code: 500,
+                    error: err.message
+                });
+            }
         }
-
-        return res.status(200).json({
-            success: true,
-            code: 200,
-            data: findCalls.reverse()
-        });
-
     }
 
     static async updateGuestDeatils(req, res, next) {
