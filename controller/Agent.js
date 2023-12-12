@@ -135,7 +135,9 @@ class AgentModel {
 
       }
 
-      console.log(req?.authData?.admin_id)
+    
+
+     
       let newCalls = await callDetails.create({
         agent_id,
         guest_id,
@@ -163,6 +165,8 @@ class AgentModel {
         disposition,
         special_occassion,
       });
+
+      
 
 
       return res.status(200).json({
