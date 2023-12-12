@@ -709,6 +709,7 @@ class AgentModel {
             agent_name : "$agent.name",
             type : 1,
             caller_id : "$guest.guest_mobile_number",
+            location : "$hotel_destination",
             agent_id : 1,
             disposition : 1,
             last_support_by : 1
