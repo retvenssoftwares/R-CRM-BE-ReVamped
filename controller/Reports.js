@@ -3,7 +3,7 @@ import callsDetails from "../model/callDetails.js"
 import ErrorHandler from "../utils/errorHandler.js";
 class Reports {
 
-    static async getCallVolumeReport (res,req,next){
+    static async getCallVolumeReport (req,res,next){
         try{
               // Admin Id from AuthData
              const admin_Id = req.authData?._id;
@@ -17,6 +17,33 @@ class Reports {
         admin_id: new mongoose.Types.ObjectId(admin_Id),
         type: "Outbound",
       });
+       // Counting attended calls when type is "Connected"
+       const connectedCalls = await callsDetails.countDocuments({
+        admin_id: new mongoose.Types.ObjectId(admin_Id),
+        type: "Inbound",
+        dial_status: "Connected",
+      });
+
+      //Incoming Calls Count/Inbound
+      const IncomingCallsCount = await callsDetails.countDocuments({
+        admin_id: new mongoose.Types.ObjectId(admin_Id),
+        type:"Inbound"
+      })
+
+      //Outgoing calls Count/Outbound
+      const OutgoingCallsCount = await callsDetails.countDocuments({
+        admin_id: new mongoose.Types.ObjectId(admin_Id),
+        type:"Outbound"
+      })
+
+      //Missed call count
+      const missedCallsCount =await callsDetails.countDocuments({
+        admin_id: new mongoose.Types.ObjectId(admin_Id),
+        type: "Inbound",
+        dial_status: "Disconnected",
+
+      })
+
 
       return res.status(200).json({
         status: true,
@@ -26,8 +53,10 @@ class Reports {
           {
             type: "Total Calls",
             totalCalls: incommingCalls + outgoingCalls,
-            // Inbound: incommingCalls,
-            // Outbound: outgoingCalls,
+            attendedCalls: connectedCalls,
+             InboundCalls: incommingCalls,
+             OutboundCalls: outgoingCalls,
+             MissedCalls:missedCallsCount
           },
         ]
 

@@ -30,4 +30,5 @@ router.get('/agent-list',verifyJwt, AdminModel.AgentList);
 router.get('/get-all-calls',verifyJwt, AdminModel.getAllCallList);
 
 router.get('/get-all-guest',verifyJwt, AdminModel.getAllGuestListAdmin);
+router.get("/getLeads",verifyJwt,AdminModel.Leads)
 export default router

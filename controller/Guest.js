@@ -5,11 +5,19 @@ import callsDetails from "../model/callDetails.js"
 
 class GuestDeatils {
     static async getCallAndGuestDetails(req, res, next) {
-        const  guest_mobile_number = req.query.guest_mobile_number
-        
+        const guest_mobile_number = req.query.guest_mobile_number
+
+        if (!guest_mobile_number) {
+            return res.status(401).json({
+                success: false,
+                code: 401,
+                message: "phone number is missing"
+            });
+        }
+
         let findCalls = await Guest.aggregate([{
             $match: {
-                guest_mobile_number : guest_mobile_number // Replace with the actual guestId you want to match
+                guest_mobile_number: guest_mobile_number // Replace with the actual guestId you want to match
             }
         },
         {
@@ -20,73 +28,116 @@ class GuestDeatils {
                 as: "calls_info"            // Alias for the joined documents
             }
         },
+        {
+            $unwind: {
+                path: "$calls_info"
+            }
+        }, {
+            $sort: {
+                "calls_info.call_date": -1
+            }
+        },
+        {
+            $group: {
+                _id: {
+                    "_id": "$_id",
+                    "agent_id": "$agent_id",
+                    "guest_first_name": "$guest_first_name",
+                    "guest_last_name": "$guest_last_name",
+                    "guest_mobile_number": "$guest_mobile_number",
+                    "guest_address_1": "$guest_address_1",
+                    "guest_address_2": "$guest_address_2",
+                    "alternate_contact": "$alternate_contact",
+                    "createdAt": "$createdAt",
+                    "updatedAt": "$updatedAt",
+                },
+                calls_info: {
+                    $push: "$calls_info"
+                }
+            }
+        },
+        {
+            $project: {
+                "_id": "$_id._id",
+                "agent_id": "$_id.agent_id",
+                "guest_first_name": "$_id.guest_first_name",
+                "guest_last_name": "$_id.guest_last_name",
+                "guest_mobile_number": "$_id.guest_mobile_number",
+                "guest_address_1": "$_id.guest_address_1",
+                "guest_address_2": "$_id.guest_address_2",
+                "alternate_contact": "$_id.alternate_contact",
+                "createdAt": "$_id.createdAt",
+                "updatedAt": "$_id.updatedAt",
+                calls_info: 1
+            }
+        }
 
         ]);
 
         return res.status(200).json({
             success: true,
             code: 200,
-            data: findCalls.reverse()
+            data: findCalls
         });
 
     }
 
     static async getAllGuestDetails(req, res, next) {
         let findCalls;
-    
+
         if (req.authData.role === 'ADMIN') {
             const adminId = req.authData._id; // Assuming admin's _id is available in req.authData
-       console.log(adminId)
-       let pipeline = [
-        {
-            $match: {
-                created_by: new mongoose.Types.ObjectId(adminId)
-            }
-        },
-        {
-            $lookup: {
-                from: "guest_details",
-                localField: "_id",
-                foreignField: "agent_id",
-                as: "guests"
-            }
-        },
-        {
-            $unwind: "$guests"
-        },
-        {
-            $lookup: {
-                from: "calling_details",
-                localField: "guests._id",
-                foreignField: "guest_id",
-                as: "calls"
-            }
-        },
-        {
-            $unwind: "$calls"
-        },
-        {
-            $lookup: {
-                from: "dispositions",
-                localField: "calls.disposition",
-                foreignField: "_id",
-                as: "dispositions"
-            }
-        },
-        {
-            $unwind: "$dispositions"
-        },
-        {
-            $match: {
-                "dispositions.name": "Reservation"
-            }
-        },
-        
-        {
-            $replaceRoot: { newRoot: "$guests" }
-        }
-    ];
-    
+            console.log(adminId)
+            let pipeline = [
+                {
+                    $match: {
+                        created_by: new mongoose.Types.ObjectId(adminId)
+                    }
+                },
+                {
+                    $lookup: {
+                        from: "guest_details",
+                        localField: "_id",
+                        foreignField: "agent_id",
+                        as: "guests"
+                    }
+                },
+                {
+                    $unwind: "$guests"
+                },
+                {
+                    $lookup: {
+                        from: "calling_details",
+                        localField: "guests._id",
+                        foreignField: "guest_id",
+                        as: "calls"
+                    }
+                },
+                {
+                    $unwind: "$calls"
+                },
+                {
+                    $lookup: {
+                        from: "dispositions",
+                        localField: "calls.disposition",
+                        foreignField: "_id",
+                        as: "dispositions"
+                    }
+                },
+                {
+                    $unwind: "$dispositions"
+                },
+                {
+                    $match: {
+                        "dispositions.name": "Reservation"
+                    }
+                },
+
+                {
+                    $replaceRoot: { newRoot: "$guests" }
+                }
+            ];
+
             try {
                 findCalls = await User.aggregate(pipeline);
                 return res.status(200).json({
@@ -104,56 +155,55 @@ class GuestDeatils {
             }
         } else if (req.authData.role === 'AGENT') {
             const agentId = req.authData._id;
-            console.log(agentId)
             let pipeline = [
-             {
-                 $match: {
-                     _id: new mongoose.Types.ObjectId(agentId)
-                 }
-             },
-             {
-                 $lookup: {
-                     from: "guest_details",
-                     localField: "_id",
-                     foreignField: "agent_id",
-                     as: "guests"
-                 }
-             },
-             {
-                 $unwind: "$guests"
-             },
-             {
-                 $lookup: {
-                     from: "calling_details",
-                     localField: "guests._id",
-                     foreignField: "guest_id",
-                     as: "calls"
-                 }
-             },
-             {
-                 $unwind: "$calls"
-             },
-             {
-                 $lookup: {
-                     from: "dispositions",
-                     localField: "calls.disposition",
-                     foreignField: "_id",
-                     as: "dispositions"
-                 }
-             },
-             {
-                 $unwind: "$dispositions"
-             },
-             {
-                 $match: {
-                     "dispositions.name": "Reservation"
-                 }
-             },
-             
-             {
-                 $replaceRoot: { newRoot: "$guests" }
-             }
-         ];
+                {
+                    $match: {
+                        _id: new mongoose.Types.ObjectId(agentId)
+                    }
+                },
+                {
+                    $lookup: {
+                        from: "guest_details",
+                        localField: "_id",
+                        foreignField: "agent_id",
+                        as: "guests"
+                    }
+                },
+                {
+                    $unwind: "$guests"
+                },
+                {
+                    $lookup: {
+                        from: "calling_details",
+                        localField: "guests._id",
+                        foreignField: "guest_id",
+                        as: "calls"
+                    }
+                },
+                {
+                    $unwind: "$calls"
+                },
+                {
+                    $lookup: {
+                        from: "dispositions",
+                        localField: "calls.disposition",
+                        foreignField: "_id",
+                        as: "dispositions"
+                    }
+                },
+                {
+                    $unwind: "$dispositions"
+                },
+                {
+                    $match: {
+                        "dispositions.name": "Reservation"
+                    }
+                },
+
+                {
+                    $replaceRoot: { newRoot: "$guests" }
+                }
+            ];
 
             try {
                 // findCalls = await Guest.find({ agent_id: req.authData._id }).lean();
@@ -174,17 +224,17 @@ class GuestDeatils {
         }
     }
 
-    static async updateGuestDeatils(req,res,next){
+    static async updateGuestDeatils(req, res, next) {
         await Guest.updateOne(
-            {guest_mobile_number : req.query.guest_mobile_number},
+            { guest_mobile_number: req.query.guest_mobile_number },
             {
-                $set :{
-                    guest_first_name:req.body.guest_first_name,
-                    guest_last_name : req.bdy.guest_last_name,
-                    guest_mobile_number : req.body.guest_mobile_number,
-                    guest_address_1 : req.body.guest_address_1,
-                    guest_address_2 : req.body.guest_address_2,
-                    alternate_contact : req.body.alternate_contact
+                $set: {
+                    guest_first_name: req.body.guest_first_name,
+                    guest_last_name: req.bdy.guest_last_name,
+                    guest_mobile_number: req.body.guest_mobile_number,
+                    guest_address_1: req.body.guest_address_1,
+                    guest_address_2: req.body.guest_address_2,
+                    alternate_contact: req.body.alternate_contact
                 }
             }
         )

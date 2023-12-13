@@ -50,19 +50,19 @@ const guestDetailSchema = mongoose.Schema({
         type:String,
         default:""
     },
-    guest_city:{
+    city:{
         type:String,
         default:""
     },
-    guest_state:{
+    state:{
         type:String,
         default:""
     },
-    guest_country:{
+    country:{
         type:String,
         default:""
     },
-    guest_zip_code:{
+    zip_code:{
         type:String,
         default:""
     },
@@ -74,12 +74,7 @@ const guestDetailSchema = mongoose.Schema({
         type:String,
         default:""
     },
- 
 
-    guest_location:{
-        type:String,
-        default:""
-    },
     alternate_contact:{
         type:String,
         default:""

@@ -40,11 +40,7 @@ class AgentModel {
 
       let findGuest = await guestDetail.findOne({ guest_mobile_number }).lean();
       if (findGuest) {
-        return res.status(409).json({
-          status: false,
-          code: 409,
-          message: "User already exists",
-        });
+        return { findGuest }
       } else {
         const {
           salutation,
@@ -60,53 +56,64 @@ class AgentModel {
           country,
         } = req.body;
 
-        let agent_id = req.authData._id;
-
-        let newGuest = await guestDetail.create({
-          agent_id,
-          salutation,
-          guest_first_name,
-          guest_last_name,
-          guest_mobile_number,
-          alternate_contact,
-          email,
-          guest_address_1,
-          guest_address_2,
-          city,
-          state,
-          country,
-        });
-        // return res.status(200).json({
-        //     status: true,
-        //     code: 200,
-        //     message: "User added",
-        //     data: newGuest
-        // });
-
-        return newGuest;
+        if (req.authData.role === "ADMIN") {
+          let role = req.authData.role
+          return { role }
+        } else {
+          let agent_id = req.authData._id;
+          let newGuest = await guestDetail.create({
+            agent_id,
+            salutation,
+            guest_first_name,
+            guest_last_name,
+            guest_mobile_number,
+            alternate_contact,
+            email,
+            guest_address_1,
+            guest_address_2,
+            city,
+            state,
+            country,
+          });
+          return newGuest;
+        }
       }
+
+      // console.log(newGuest)
     } catch (error) {
       return res.status(500).json({
         status: false,
         code: 500,
         message: error.message,
       });
+
     }
   }
+
 
   static async AddCall(req, res, next) {
     try {
       let guest_id = req?.body?.guest_id;
-
       if (!req.body.guest_id) {
-        let newuser = await AgentModel.AddGuest(req);
+        let newuser = await AgentModel.AddGuest(req, res);
+        if (newuser.findGuest) {
+          return res.status(409).json({
+            status: false,
+            code: 409,
+            message: "User Already exist",
+          });
+        } else if (newuser.role) {
+          return res.status(401).json({
+            status: false,
+            code: 401,
+            message: "Admin is not allowed to add guest",
+          });
+        }
         guest_id = newuser._id;
       }
 
       let agent_id = req.authData._id;
-      let admin_id = req.authData.admin_id
       const {
-        call_date,
         caller_type,
         start_time,
         end_time,
@@ -135,7 +142,6 @@ class AgentModel {
 
       }
 
-      console.log(req?.authData?.admin_id)
       let newCalls = await callDetails.create({
         agent_id,
         guest_id,
@@ -164,13 +170,14 @@ class AgentModel {
         special_occassion,
       });
 
-
       return res.status(200).json({
         status: true,
         code: 200,
         message: "Call detail added...",
         data: newCalls,
       });
+
+
     } catch (error) {
       return res.status(500).json({
         status: false,
@@ -544,9 +551,6 @@ class AgentModel {
               {
                 disposition: disposition,
               },
-              {
-                disposition: disposition,
-              },
             ],
           },
         });
@@ -711,6 +715,8 @@ class AgentModel {
         });
       }
 
+
+
       if (req.query.type) {
         condition.push({
           $match: {
@@ -728,21 +734,42 @@ class AgentModel {
         });
       }
 
+      if (req.query.from && req.query.to) {
+        // Parse the date strings to JavaScript Date objects
+        const fromDate = new Date(req.query.from);
+        const toDate = new Date(req.query.to);
+
+        // Format the dates to yyyy-mm-dd format
+        const formattedFromDate = fromDate.toISOString().split("T")[0];
+        const formattedToDate = toDate.toISOString().split("T")[0];
+
+        // Add a $match stage to filter by date range
+        condition.push({
+          $match: {
+            call_date: {
+              $gte: formattedFromDate,
+              $lte: formattedToDate
+            }
+          }
+        });
+      }
+
+
       condition.push({
-        $project : {
-          _id : 1,
-          guest_first_name : "$guest.guest_first_name",
-          guest_last_name : "$guest.guest_last_name",
-          agent_name : "$agent.name",
-          type : 1,
-          caller_id : "$guest.guest_mobile_number",
-          location : "$hotel_destination",
-          agent_id : 1,
-          disposition : 1,
-          last_support_by : 1,
-          start_time : 1,
-          call_date : 1,
-          talktime : 1
+        $project: {
+          _id: 1,
+          guest_first_name: "$guest.guest_first_name",
+          guest_last_name: "$guest.guest_last_name",
+          agent_name: "$agent.name",
+          type: 1,
+          caller_id: "$guest.guest_mobile_number",
+          location: "$hotel_destination",
+          agent_id: 1,
+          disposition: 1,
+          last_support_by: 1,
+          start_time: 1,
+          call_date: 1,
+          talktime: 1
         }
       })
       let findCalls = await callDetails.aggregate(condition);
@@ -750,7 +777,7 @@ class AgentModel {
         status: true,
         code: 200,
         message: "Details....",
-        data: findCalls,
+        data: findCalls.reverse(),
       });
     } catch (error) {
       return res.status(500).json({
@@ -816,43 +843,43 @@ class AgentModel {
 
   static async Pause(req, res, next) {
     try {
-      const {pause_reason, agent_id, resume_time, pause_time} = req.body
+      const { pause_reason, agent_id, resume_time, pause_time } = req.body
 
-      if(!pause_reason && !resume_time){
+      // if(!pause_reason && !resume_time){
+      //   return res.status(401).json({
+      //     status: false,
+      //     code: 401,
+      //     data: "data id missing",
+      //   });
+      // }
+
+      if (!agent_id) {
         return res.status(401).json({
           status: false,
           code: 401,
-          data: "data id missing",
-        });
-      }
-
-      if(!pause_reason || !agent_id){
-        return res.status(401).json({
-          status: false,
-          code: 401,
-          data: "pause reason Id or agent id is missing",
+          data: "agent id is missing",
         });
       }
 
       const reasons = await pause_call_dropDown.findOne({ _id: pause_reason });
 
-      if(!reasons){
+      if (!reasons) {
         return res.status(401).json({
           status: false,
           code: 401,
           data: "data not found..",
         });
       }
-      
+
       const pauseCall = new PauseCall({
         agent_id: agent_id,
         pause_reason: reasons.pause_reason,
         pause_time: pause_time,
         resume_time: resume_time,
       });
-  
+
       await pauseCall.save();
-  
+
       return res.status(200).json({
         status: true,
         code: 200,
@@ -868,9 +895,9 @@ class AgentModel {
     }
   }
 
-  static async GetPauseReason(req,res,next){
+  static async GetPauseReason(req, res, next) {
     const findReasons = await pause_call_dropDown.find({})
-    if(!findReasons){
+    if (!findReasons) {
       return res.status(401).json({
         status: true,
         code: 401,
@@ -883,7 +910,7 @@ class AgentModel {
       data: findReasons,
     });
   }
-  
+
 
   static async GetPauseCall(req, res, next) {
     const findPause = await PauseCall.find({
@@ -1212,7 +1239,7 @@ class AgentModel {
         });
       }
 
-    }else{
+    } else {
       return res.status(401).json({
         status: false,
         code: 401,
@@ -1224,6 +1251,79 @@ class AgentModel {
   }
 
 
+
+  static async Leads(req, res, next) {
+    let pipeline = [];
+
+    pipeline.push({
+      $match: {
+        agent_id: new mongoose.Types.ObjectId(req.authData._id),
+      },
+    });
+
+    pipeline.push({
+      $lookup: {
+        from: "guest_details",
+        localField: "guest_id",
+        foreignField: "_id",
+        as: "guest",
+      },
+    });
+
+    // Unwind the guest array
+    pipeline.push({
+      $unwind: "$guest"
+    });
+
+    pipeline.push({
+      $sort: { call_date: -1 }
+    });
+
+    // Group by guest_id
+    pipeline.push({
+      $group: {
+        _id: "$guest_id",
+        call_records: {
+          $first: {
+            call_date: "$call_date",
+            start_time: "$start_time",
+            end_time: "$end_time",
+            hotel_name: "$hotel_name",
+            disposition: "$disposition",
+            remark: "$remark",
+            type: "$type",
+            talktime: "$talktime",
+            dial_status: "$dial_status",
+            last_called: "$last_called",
+            last_support_by: "$last_support_by",
+            purpose_of_travel: "$purpose_of_trave",
+            arrival_date: "$arrival_date",
+            department: "$department",
+            departure_date: "$departure_date",
+            dial_status: "$dial_status",
+            caller_type: "$caller_type",
+            call_date: "$call_date",
+            hotel_destination: "$hotel_destination"
+            // include other call record fields here...
+          }
+        },
+        guest: { $first: "$guest" }
+      }
+    });
+
+
+
+    const data = await callDetails.aggregate(pipeline)
+
+    return res.send(data)
+  }
+
+
+
 }
+
+
+
+
 
 export default AgentModel;
