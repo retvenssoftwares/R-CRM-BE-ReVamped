@@ -1251,6 +1251,75 @@ class AgentModel {
   }
 
 
+  
+  static async Leads(req, res, next) {
+    let pipeline = [];
+    
+    pipeline.push({
+      $match: {
+        agent_id: new mongoose.Types.ObjectId(req.authData._id),
+      },
+    });
+
+    pipeline.push({
+      $lookup: {
+        from: "guest_details",
+        localField: "guest_id",
+        foreignField: "_id",
+        as: "guest",
+      },
+    });
+
+    // Unwind the guest array
+    pipeline.push({
+      $unwind: "$guest"
+    });
+
+    pipeline.push({
+      $sort: { call_date: -1 }
+    });
+
+    // Group by guest_id
+    pipeline.push({
+      $group: {
+        _id: "$guest_id",
+        call_records: {
+          $first: {
+            call_date: "$call_date",
+            start_time: "$start_time",
+            end_time: "$end_time",
+            hotel_name:"$hotel_name",
+            disposition:"$disposition",
+            remark:"$remark",
+            type:"$type",
+            talktime:"$talktime",
+            dial_status:"$dial_status",
+            last_called:"$last_called",
+            last_support_by:"$last_support_by",
+            purpose_of_travel:"$purpose_of_trave",
+            arrival_date:"$arrival_date",
+            department:"$department",
+            departure_date:"$departure_date",
+            dial_status:"$dial_status",
+            caller_type:"$caller_type",
+            call_date:"$call_date",
+            hotel_destination:"$hotel_destination"
+            // include other call record fields here...
+          }
+        },
+        guest: { $first: "$guest" }
+      }
+    });
+
+
+
+    const data = await callDetails.aggregate(pipeline)
+
+    return res.send(data)
+  }
+
+
+
 }
 
 export default AgentModel;
