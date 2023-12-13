@@ -144,6 +144,7 @@ class AdminModel {
         let phone_number = req.body.phone_number;
         let password = req.body.password;
         let designation = req.body.designation;
+        let department = req.body.department;
 
         let findOldUser = await User.findOne({ email }).lean();
         let findAgent = await User.find({ role: "AGENT" }).lean();
@@ -170,6 +171,7 @@ class AdminModel {
             // agent_id: (findAgent.length + 1) || 1,
             // agent_text: req.query.ext_name,
             designation: designation,
+            department:department,
             role: "AGENT",
           });
 
