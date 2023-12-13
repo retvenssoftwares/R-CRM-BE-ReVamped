@@ -36,7 +36,7 @@ class GuestDeatils {
             $sort: {
                 "calls_info.call_date": -1
             }
-        }, 
+        },
         {
             $group: {
                 _id: {
@@ -55,7 +55,7 @@ class GuestDeatils {
                     $push: "$calls_info"
                 }
             }
-        }, 
+        },
         {
             $project: {
                 "_id": "$_id._id",
@@ -68,7 +68,7 @@ class GuestDeatils {
                 "alternate_contact": "$_id.alternate_contact",
                 "createdAt": "$_id.createdAt",
                 "updatedAt": "$_id.updatedAt",
-                calls_info : 1
+                calls_info: 1
             }
         }
 
@@ -87,7 +87,7 @@ class GuestDeatils {
 
         if (req.authData.role === 'ADMIN') {
             const adminId = req.authData._id; // Assuming admin's _id is available in req.authData
-
+            console.log(adminId)
             let pipeline = [
                 {
                     $match: {
@@ -96,11 +96,45 @@ class GuestDeatils {
                 },
                 {
                     $lookup: {
-                        from: "guest_details", // Replace "guests" with the actual collection name
+                        from: "guest_details",
                         localField: "_id",
                         foreignField: "agent_id",
                         as: "guests"
                     }
+                },
+                {
+                    $unwind: "$guests"
+                },
+                {
+                    $lookup: {
+                        from: "calling_details",
+                        localField: "guests._id",
+                        foreignField: "guest_id",
+                        as: "calls"
+                    }
+                },
+                {
+                    $unwind: "$calls"
+                },
+                {
+                    $lookup: {
+                        from: "dispositions",
+                        localField: "calls.disposition",
+                        foreignField: "_id",
+                        as: "dispositions"
+                    }
+                },
+                {
+                    $unwind: "$dispositions"
+                },
+                {
+                    $match: {
+                        "dispositions.name": "Reservation"
+                    }
+                },
+
+                {
+                    $replaceRoot: { newRoot: "$guests" }
                 }
             ];
 
@@ -109,7 +143,7 @@ class GuestDeatils {
                 return res.status(200).json({
                     success: true,
                     code: 200,
-                    data: findCalls.reverse()
+                    data: findCalls.reverse(),
                 });
             } catch (err) {
                 // Handle error appropriately
@@ -120,12 +154,64 @@ class GuestDeatils {
                 });
             }
         } else if (req.authData.role === 'AGENT') {
+            const agentId = req.authData._id;
+            let pipeline = [
+                {
+                    $match: {
+                        _id: new mongoose.Types.ObjectId(agentId)
+                    }
+                },
+                {
+                    $lookup: {
+                        from: "guest_details",
+                        localField: "_id",
+                        foreignField: "agent_id",
+                        as: "guests"
+                    }
+                },
+                {
+                    $unwind: "$guests"
+                },
+                {
+                    $lookup: {
+                        from: "calling_details",
+                        localField: "guests._id",
+                        foreignField: "guest_id",
+                        as: "calls"
+                    }
+                },
+                {
+                    $unwind: "$calls"
+                },
+                {
+                    $lookup: {
+                        from: "dispositions",
+                        localField: "calls.disposition",
+                        foreignField: "_id",
+                        as: "dispositions"
+                    }
+                },
+                {
+                    $unwind: "$dispositions"
+                },
+                {
+                    $match: {
+                        "dispositions.name": "Reservation"
+                    }
+                },
+
+                {
+                    $replaceRoot: { newRoot: "$guests" }
+                }
+            ];
+
             try {
-                findCalls = await Guest.find({ agent_id: req.authData._id }).lean();
+                // findCalls = await Guest.find({ agent_id: req.authData._id }).lean();
+                findCalls = await User.aggregate(pipeline);
                 return res.status(200).json({
                     success: true,
                     code: 200,
-                    data: findCalls.reverse()
+                    data: findCalls.reverse(),
                 });
             } catch (err) {
                 // Handle error appropriately

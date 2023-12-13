@@ -144,6 +144,7 @@ class AdminModel {
         let phone_number = req.body.phone_number;
         let password = req.body.password;
         let designation = req.body.designation;
+        let department = req.body.department;
 
         let findOldUser = await User.findOne({ email }).lean();
         let findAgent = await User.find({ role: "AGENT" }).lean();
@@ -170,6 +171,7 @@ class AdminModel {
             // agent_id: (findAgent.length + 1) || 1,
             // agent_text: req.query.ext_name,
             designation: designation,
+            department: department,
             role: "AGENT",
           });
 
@@ -579,14 +581,14 @@ class AdminModel {
       // Missed Calls
       const missedCalls = await CallDetail.countDocuments({
         admin_id: new mongoose.Types.ObjectId(admin_Id),
-        dial_status: "Diconnected",
+        dial_status: "Disconnected",
         type: "Inbound",
       });
 
       // Abandoned Calls
       const abandonedCalls = await CallDetail.countDocuments({
         admin_id: new mongoose.Types.ObjectId(admin_Id),
-        dial_status: "Diconnected",
+        dial_status: "Disconnected",
         type: "Outbound",
       });
 
@@ -628,7 +630,7 @@ class AdminModel {
       // No Answer
       const noAnswer = await CallDetail.countDocuments({
         admin_id: new mongoose.Types.ObjectId(admin_Id),
-        dial_status: "Diconnected",
+        dial_status: "Disconnected",
         type: "Inbound",
       });
 
@@ -1334,7 +1336,7 @@ class AdminModel {
         status: true,
         code: 200,
         message: "Details Fetched Successfully....",
-        data:data.reverse(),
+        data: data.reverse(),
       });
     } catch (error) {
       return res.status(500).json({
@@ -1402,13 +1404,13 @@ class AdminModel {
         },
 
         {
-        $lookup: {
-          from: "users",
-          localField: "agent_id",
-          foreignField: "_id",
-          as: "agent",
+          $lookup: {
+            from: "users",
+            localField: "agent_id",
+            foreignField: "_id",
+            as: "agent",
+          },
         },
-      },
         {
           $unwind: {
             path: "$agent",
@@ -1418,11 +1420,11 @@ class AdminModel {
         {
           $project: {
             _id: 1,
-            talktime:1,
-            start_time:1,
-            end_time:1,
-            call_date:1,
-            remark:1,
+            talktime: 1,
+            start_time: 1,
+            end_time: 1,
+            call_date: 1,
+            remark: 1,
             guest_first_name: "$guest.guest_first_name",
             guest_last_name: "$guest.guest_last_name",
             caller_id: "$guest.guest_mobile_number",
@@ -1442,7 +1444,7 @@ class AdminModel {
         status: false,
         code: 200,
         message: "Data Fetched Successfully",
-        data:data.reverse(),
+        data: data.reverse(),
       });
 
     } catch (error) {
@@ -1491,12 +1493,12 @@ class AdminModel {
         },
       },
       {
-        $project : {
-          "agent_id" : "$guest.agent_id",
-          "guest_id" : 1,
-          "last_call" :1,
-          "second_last_call_agent_id" : "$second_last_call.agent_id",
-          "guest" : 1
+        $project: {
+          "agent_id": "$guest.agent_id",
+          "guest_id": 1,
+          "last_call": 1,
+          "second_last_call_agent_id": "$second_last_call.agent_id",
+          "guest": 1
         }
       },
       {
@@ -1528,19 +1530,19 @@ class AdminModel {
         },
       },
       {
-        $project : {
-          guest_id : 1,
-          guest_first_name : "$guest.guest_first_name",
-          guest_last_name : "$guest.guest_last_name",
-          guest_email : "$guest.guest_email",
-          guest_mobile_number : "$guest.guest_mobile_number",
-          disposition_last_call : "$last_call.last_call",
-          last_call_date : "$last_call.call_date",
-          location : "$guest.location", // TODO
-          last_support_by : "$last_call.last_support_by",
-          agent_name : "$agent.name",
-          agent_id : 1,
-          second_last_call_agent_name : "$second_last_call_agent.name",
+        $project: {
+          guest_id: 1,
+          guest_first_name: "$guest.guest_first_name",
+          guest_last_name: "$guest.guest_last_name",
+          guest_email: "$guest.guest_email",
+          guest_mobile_number: "$guest.guest_mobile_number",
+          disposition_last_call: "$last_call.last_call",
+          last_call_date: "$last_call.call_date",
+          location: "$guest.location", // TODO
+          last_support_by: "$last_call.last_support_by",
+          agent_name: "$agent.name",
+          agent_id: 1,
+          second_last_call_agent_name: "$second_last_call_agent.name",
         }
       }
     ];
@@ -1552,6 +1554,75 @@ class AdminModel {
       code: 200,
       data
     });
+
+  }
+
+
+  // admin leads
+  static async Leads(req, res, next) {
+    let findCalls;
+
+    if (req.authData.role === 'ADMIN') {
+      const adminId = req.authData._id; // Assuming admin's _id is available in req.authData
+      let pipeline = [
+        {
+          $match: {
+            created_by: new mongoose.Types.ObjectId(adminId)
+          }
+        },
+        {
+          $lookup: {
+            from: "guest_details",
+            localField: "_id",
+            foreignField: "agent_id",
+            as: "guests"
+          }
+        },
+        {
+          $unwind: "$guests"
+        },
+        {
+          $lookup: {
+            from: "calling_details",
+            localField: "guests._id",
+            foreignField: "guest_id",
+            as: "calls"
+          }
+        },
+        {
+          $unwind: "$calls"
+        },
+        {
+          $sort: { "calls.call_date": -1 }
+        },
+        {
+          $group: {
+            _id: "$calls.guest_id",
+            calls: { $first: "$calls" },
+            guest: { $first: "$guests" }
+            // Add other fields you want to include in the grouping
+          },
+          
+        }
+      ];
+
+      try {
+        findCalls = await User.aggregate(pipeline);
+        return res.status(200).json({
+          success: true,
+          code: 200,
+          data: findCalls.reverse(),
+        });
+      } catch (err) {
+        // Handle error appropriately
+        return res.status(500).json({
+          success: false,
+          code: 500,
+          error: err.message
+        });
+      }
+    }
+
 
   }
 }
