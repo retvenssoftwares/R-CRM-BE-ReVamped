@@ -4,7 +4,7 @@ import guest from "../controller/Guest.js"
 const router = express.Router();
 
 
-router.get("/get_guest_callDetails",verifyJwt,guest.getCallAndGuestDetails)     
+router.get("/get_guest_callDetails",guest.getCallAndGuestDetails)     
 router.get("/getAllGuest",verifyJwt,guest.getAllGuestDetails)   
 router.patch('/updateGuestDetails',guest.updateGuestDeatils)                                      
 

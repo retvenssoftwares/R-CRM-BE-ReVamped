@@ -28,6 +28,7 @@ async function verifyJwt(req, res, next) {
       });
     } else if (authorization) {
       const verifyValidToken = JWT.decode(authorization);
+      console.log(verifyValidToken)
       if (!verifyValidToken) {
         return res
           .status(401)

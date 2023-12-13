@@ -19,8 +19,7 @@ router.get("/get_pause_call",verifyJwt,AgentModel.GetPauseCall)
 router.post("/logOut",verifyJwt,AgentModel.logOut)
 router.patch("/updateAgent",verifyJwt,AgentModel.updateAgent)
 router.get("/getPauseReasons",Agent.GetPauseReason)
-
-
+router.get("/getLead",verifyJwt,Agent.Leads)
 
 
 
