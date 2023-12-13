@@ -30,11 +30,11 @@ const { Schema, model } = mongoose;
 
 const userSchema = new Schema(
   {
-    name: { type: String, required: true, default: "User"},
-    email: { type: String },
-    phone_number: { type: Number },
+    name: { type: String, required: true, default: "User", default:""},
+    email: { type: String, default:"" },
+    phone_number: { type: Number, default:"" },
     gender : { type : String , enum : ['MALE', 'FEMALE','OTHER'] },
-    dob : { type: String },
+    dob : { type: String, default:"" },
     password: { type: String, required: true},
     role : { type : String, default : "ADMIN"},
     status : { type : String , enum : ['ACTIVE', 'INACTIVE'] , default : "ACTIVE"},
@@ -43,14 +43,12 @@ const userSchema = new Schema(
     expires: {type : Number, default : null},
     is_email_Verified : { type: Boolean, default: false},
     created_by:{type:mongoose.Types.ObjectId,enum:["ADMIN"]},
-    department : {type:String},
-    designation :{tyope:String},
-    agent_id:{type:Number},
-    agentext:{type:Number},
-    coral_admin_username : {type : String},
-    coral_admin_password : {type : String},
-    designation : {type : String},
-    department:{type:String}
+    agent_id:{type:Number, default:""},
+    agentext:{type:Number, default:""},
+    coral_admin_username : {type : String, default:""},
+    coral_admin_password : {type : String, default:""},
+    designation : {type : String, default:""},
+    department:{type:String, default:""}
   },
   { versionKey: false, timestamp : true }
 );

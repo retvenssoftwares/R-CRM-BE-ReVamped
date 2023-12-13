@@ -1164,7 +1164,7 @@ class AgentModel {
         return res.status(401).json({
           status: false,
           code: 401,
-          message: "_id is missing",s
+          message: "_id is missing",
         });
       }
 
