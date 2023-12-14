@@ -64,6 +64,7 @@ class AgentModel {
           let newGuest = await guestDetail.create({
             agent_id,
             salutation,
+            date : new Date().toLocaleString('en-US', options).split(",")[1],
             guest_first_name,
             guest_last_name,
             guest_mobile_number,

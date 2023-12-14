@@ -42,7 +42,7 @@ class GuestDeatils {
         {
             $unwind: "$disposition"
         },
-        
+
         {
             $unwind: {
                 path: "$calls_info"
@@ -81,7 +81,7 @@ class GuestDeatils {
                         ]
                     }
                 }
-            
+
             }
         },
             // {
@@ -116,19 +116,6 @@ class GuestDeatils {
     static async getAllGuestDetails(req, res, next) {
         let findCalls;
 
-        if (req.query.from && req.query.to) {
-            // Parse the date strings to JavaScript Date objects
-            const fromDate = new Date(req.query.from);
-            const toDate = new Date(req.query.to);
-
-            let formattedFromDate = "";
-            let formattedToDate = ""
-
-            // Format the dates to yyyy-mm-dd format
-            formattedFromDate = fromDate.toISOString().split("T")[0];
-            formattedToDate = toDate.toISOString().split("T")[0];
-        }
-
         if (req.authData.role === 'ADMIN') {
             const adminId = req.authData._id; // Assuming admin's _id is available in req.authData
             let pipeline = [
@@ -143,43 +130,68 @@ class GuestDeatils {
                         localField: "_id",
                         foreignField: "agent_id",
                         as: "guests"
-                    }
+                    },
+
                 },
                 {
                     $unwind: "$guests"
                 },
-                {
-                    $lookup: {
-                        from: "calling_details",
-                        localField: "guests._id",
-                        foreignField: "guest_id",
-                        as: "calls"
-                    }
-                },
-                {
-                    $unwind: "$calls"
-                },
-                {
-                    $lookup: {
-                        from: "dispositions",
-                        localField: "calls.disposition",
-                        foreignField: "_id",
-                        as: "dispositions"
-                    }
-                },
-                {
-                    $unwind: "$dispositions"
-                },
-                {
-                    $match: {
-                        "dispositions.name": "Reservation"
-                    }
-                },
+                // {
+                //     $match: {
+                //         "guests.date": {
+                //             $gt: req?.query?.from,  // Assuming fromDate is defined
+                //             $lte: req?.query?.to,    // Assuming toDate is defined
+                //         },
+                //     },
+                // },
+                // {
+                //     $lookup: {
+                //         from: "calling_details",
+                //         localField: "guests._id",
+                //         foreignField: "guest_id",
+                //         as: "calls"
+                //     }
+                // },
+                // {
+                //     $unwind: "$calls"
+                // },
+                // {
+                //     $lookup: {
+                //         from: "dispositions",
+                //         localField: "calls.disposition",
+                //         foreignField: "_id",
+                //         as: "dispositions"
+                //     }
+                // },
+                // {
+                //     $unwind: "$dispositions"
+                // },
+                // {
+                //     $match: {
+                //         "dispositions.name": "Reservation"
+                //     }
+                // },
 
-                {
-                    $replaceRoot: { newRoot: "$guests" }
-                }
+                // {
+                //     $replaceRoot: { newRoot: "$guests" }
+                // }
             ];
+
+
+            if (req.query.from && req.query.to) {
+                // Parse the date strings to JavaScript Date objects
+                const fromDate = req.query.from;
+                const toDate = req.query.to;
+                // Add a $match stage to filter by date range
+                pipeline.push({
+                  $match: {
+                    date: {
+                      $gte: fromDate,
+                      $lte: toDate
+                    }
+                  }
+                });
+              }
 
 
 
@@ -270,20 +282,34 @@ class GuestDeatils {
     }
 
     static async updateGuestDeatils(req, res, next) {
-        await Guest.updateOne(
-            { guest_mobile_number: req.query.guest_mobile_number },
+        const data = await Guest.updateOne(
+            { guest_mobile_number: req.body.guest_mobile_number },
             {
                 $set: {
                     guest_first_name: req.body.guest_first_name,
-                    guest_last_name: req.bdy.guest_last_name,
+                    guest_last_name: req.body.guest_last_name,
                     guest_mobile_number: req.body.guest_mobile_number,
+                    state : req.body.state,
+                    city:req.body.city,
+                    country:req.body.country,
                     guest_address_1: req.body.guest_address_1,
                     guest_address_2: req.body.guest_address_2,
                     alternate_contact: req.body.alternate_contact
                 }
             }
         )
+
+        if(data){
+            return res.status(200).json({
+                success: true,
+                code: 200,
+                message: "Updated successfully"
+            });
+        }
     }
+
+
+   
 
 
 }
