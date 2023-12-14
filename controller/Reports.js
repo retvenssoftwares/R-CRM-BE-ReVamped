@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import callsDetails from "../model/callDetails.js"
 import ErrorHandler from "../utils/errorHandler.js";
+import dispositionDetails from "../model/Disposition.js"
 class Reports {
 
   static async getCallVolumeReport(req, res, next) {
@@ -286,12 +287,15 @@ class Reports {
 
 
   static async getAgentPerformance(req, res, next) {
+
+
     const agentPerformance = await callsDetails.aggregate([
       {
         $match: {
           agent_id: new mongoose.Types.ObjectId(req.authData._id),
         },
       },
+
       {
         $lookup: {
           from: "users",            // Target collection
@@ -300,9 +304,11 @@ class Reports {
           as: "agent_info"            // Alias for the joined documents
         }
       },
+
       {
         $unwind: "$agent_info"
       },
+
       {
         $group: {
           _id: null,
@@ -316,8 +322,8 @@ class Reports {
             },
           },
           totalCount: { $sum: 1 },
-          agent_id: { $first: "$agent_info.agent_id" }, // Save the agent_id for later use
-          agent_name: { $first: "$agent_info.name" }
+          agent_id: { $first: "$agent_info._id" }, // Save the agent_id for later use
+          agent_name: { $first: "$agent_info.name" },
         },
       },
 
@@ -328,32 +334,51 @@ class Reports {
           agent_name: 1, // Include the agent_name field in the output
           totalDurationInSeconds: 1,
           totalCount: 1,
-
         }
       },
     ]);
 
-    function secondsToHms(d) {
-      d = Number(d);
-      var h = Math.floor(d / 3600);
-      var m = Math.floor(d % 3600 / 60);
-      var s = Math.floor(d % 3600 % 60);
 
-      var hDisplay = h > 0 ? (h < 10 ? '0' : '') + h + ':' : '00:';
-      var mDisplay = m > 0 ? (m < 10 ? '0' : '') + m + ':' : '00:';
-      var sDisplay = s > 0 ? (s < 10 ? '0' : '') + s : '00';
-      return hDisplay + mDisplay + sDisplay;
-    }
+    // reservation call count
+    const [incomingCallsCount, reservationCount] = await Promise.all([
+      callsDetails.countDocuments({ agent_id: new mongoose.Types.ObjectId(req.authData._id) }),
+      dispositionDetails.countDocuments({ name: "Reservation" }),
+    ]);
 
-    // Convert totalDurationInSeconds to hh:mm:ss format for each document
-    agentPerformance.forEach(doc => {
-      doc.durationInHMS = secondsToHms(doc.totalDurationInSeconds);
-    });
+    // abandonedCall count
+    const AbandonedCall = await callsDetails.countDocuments({
+       agent_id: new mongoose.Types.ObjectId(req.authData._id) ,
+       dial_status : "Rejected"
+    })
 
+    //missed call count
+
+    const MissedCall = await callsDetails.countDocuments({
+      agent_id: new mongoose.Types.ObjectId(req.authData._id) ,
+      dial_status : "Disconnected"
+   })
+
+
+    const outboundHours = Math.floor(agentPerformance[0].totalDurationInSeconds / 3600);
+    const outboundMinutes = Math.floor((agentPerformance[0].totalDurationInSeconds % 3600) / 60);
+    const outboundSeconds = agentPerformance[0].totalDurationInSeconds % 60;
+
+    const formattedOutboundDuration = `${outboundHours.toString().padStart(2, '0')}:${outboundMinutes.toString().padStart(2, '0')}:${outboundSeconds.toString().padStart(2, '0')}`;
+
+    //console.log(incomingCallsCount-AbandonedCall-reservationCount)
     return res.status(200).json({
       status: true,
       code: 200,
-      data: agentPerformance
+      data: {
+        agent_id: agentPerformance[0].agent_id,
+        agent_name: agentPerformance[0].agent_name,
+        formattedInboundDuration: formattedOutboundDuration,
+        totalCount: agentPerformance[0].totalCount,
+        reservationCount: reservationCount,
+        AbandonedCall : AbandonedCall,
+        MissedCall : MissedCall
+        // Include other fields from agentPerformance as needed
+      }
     })
   }
 

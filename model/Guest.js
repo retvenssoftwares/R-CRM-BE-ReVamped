@@ -78,11 +78,16 @@ const guestDetailSchema = mongoose.Schema({
     alternate_contact:{
         type:String,
         default:""
+    },
+
+    date:{
+        type:String,
+        default:""
     }
    
    
 
-}, {timestamps:true})
+},{timestamp : true} )
 
 const Guest = model("guest_detail", guestDetailSchema);
 export default Guest;
