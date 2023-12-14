@@ -4,7 +4,7 @@ const { Schema, model } = mongoose;
 
 const pause_call = new mongoose.Schema({
 
-    pause_reason :{ type : String},
+    pause_reason :{ type : String,default:""},
    
   
 })

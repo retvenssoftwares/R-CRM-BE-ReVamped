@@ -6,6 +6,7 @@ const dispositionSchema = mongoose.Schema(
   {
     name: {
       type: String,
+      default:""
     },
   },
   { versionKey: false }

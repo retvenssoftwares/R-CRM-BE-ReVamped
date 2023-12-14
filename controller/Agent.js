@@ -373,7 +373,6 @@ class AgentModel {
           type: "Missed Calls",
           missedCalls: total_missed_call,
         },
-
         {
           type: "Abandoned Calls",
           abandonedCalls: abandoned,
@@ -498,15 +497,16 @@ class AgentModel {
   static async PendingFollowUp(req, res, next) {
     try {
       let condition = [
+        // Your existing pipeline stages
         {
           $match: {
             $and: [
               {
                 agent_id: new mongoose.Types.ObjectId(req.authData._id),
               },
-              {
-                department: "RESERVATION",
-              },
+                {
+                  department: "RESERVATION",
+                },
             ],
           },
         },
@@ -521,6 +521,24 @@ class AgentModel {
         {
           $unwind: "$guest",
         },
+        
+        {
+          $sort: {
+            _id: -1,
+          },
+        },
+       // New stage for matching disposition
+        {
+          $lookup: {
+            from: "dispositions",
+            localField: "disposition", // Assuming disposition field in callDetails collection
+            foreignField: "_id",
+            as: "disposition_info",
+          },
+        },
+        {
+          $unwind: "$disposition_info",
+        },
         {
           $project: {
             hotel_name: 1,
@@ -529,43 +547,19 @@ class AgentModel {
             arrival_date: 1,
           },
         },
-        {
-          $sort: {
-            _id: -1,
-          },
-        },
       ];
-
-      if (req.query.hotel_name) {
-        let hotelName = req.query.hotel_name.replaceAll("_", " ");
+      
+      if (req.query.disposition) {
+        let dispositionId = req.query.disposition;
         condition.unshift({
           $match: {
-            hotel_name: hotelName,
+            disposition: new mongoose.Types.ObjectId(dispositionId),
           },
         });
       }
-
-      if (!req.query.disposition) {
-        let disposition = req.query.disposition.replaceAll("_", " ");
-
-        condition.unshift({
-          $match: {
-            $or: [
-              {
-                disposition: disposition,
-              },
-            ],
-          },
-        });
-      } else {
-        condition.unshift({
-          $match: {
-            disposition: req.query.disposition,
-          },
-        });
-      }
-
+      
       let findCall = await callDetails.aggregate(condition);
+      
 
       return res.status(200).json({
         status: true,
@@ -866,17 +860,9 @@ class AgentModel {
 
       const reasons = await pause_call_dropDown.findOne({ _id: pause_reason });
 
-      if (!reasons) {
-        return res.status(401).json({
-          status: false,
-          code: 401,
-          data: "data not found..",
-        });
-      }
-
       const pauseCall = new PauseCall({
         agent_id: agent_id,
-        pause_reason: reasons.pause_reason,
+        pause_reason: reasons?.pause_reason,
         pause_time: pause_time,
         resume_time: resume_time,
       });
@@ -1189,6 +1175,7 @@ class AgentModel {
 
     if (req.authData.role === "ADMIN") {
       const { _id, first_name, gender, date_of_birth, contact, email, department, designation, password } = req.body;
+      console.log(first_name)
 
       if (!_id) {
         return res.status(401).json({
@@ -1255,71 +1242,71 @@ class AgentModel {
 
 
 
-  static async Leads(req, res, next) {
-    let pipeline = [];
+  // static async Leads(req, res, next) {
+  //   let pipeline = [];
 
-    pipeline.push({
-      $match: {
-        agent_id: new mongoose.Types.ObjectId(req.authData._id),
-      },
-    });
+  //   pipeline.push({
+  //     $match: {
+  //       agent_id: new mongoose.Types.ObjectId(req.authData._id),
+  //     },
+  //   });
 
-    pipeline.push({
-      $lookup: {
-        from: "guest_details",
-        localField: "guest_id",
-        foreignField: "_id",
-        as: "guest",
-      },
-    });
+  //   pipeline.push({
+  //     $lookup: {
+  //       from: "guest_details",
+  //       localField: "guest_id",
+  //       foreignField: "_id",
+  //       as: "guest",
+  //     },
+  //   });
 
-    // Unwind the guest array
-    pipeline.push({
-      $unwind: "$guest"
-    });
+  //   // Unwind the guest array
+  //   pipeline.push({
+  //     $unwind: "$guest"
+  //   });
 
-    pipeline.push({
-      $sort: { call_date: -1 }
-    });
+  //   pipeline.push({
+  //     $sort: { call_date: -1 }
+  //   });
 
-    // Group by guest_id
-    pipeline.push({
-      $group: {
-        _id: "$guest_id",
-        call_records: {
-          $first: {
-            call_date: "$call_date",
-            start_time: "$start_time",
-            end_time: "$end_time",
-            hotel_name: "$hotel_name",
-            disposition: "$disposition",
-            remark: "$remark",
-            type: "$type",
-            talktime: "$talktime",
-            dial_status: "$dial_status",
-            last_called: "$last_called",
-            last_support_by: "$last_support_by",
-            purpose_of_travel: "$purpose_of_trave",
-            arrival_date: "$arrival_date",
-            department: "$department",
-            departure_date: "$departure_date",
-            dial_status: "$dial_status",
-            caller_type: "$caller_type",
-            call_date: "$call_date",
-            hotel_destination: "$hotel_destination"
-            // include other call record fields here...
-          }
-        },
-        guest: { $first: "$guest" }
-      }
-    });
+  //   // Group by guest_id
+  //   pipeline.push({
+  //     $group: {
+  //       _id: "$guest_id",
+  //       call_records: {
+  //         $first: {
+  //           call_date: "$call_date",
+  //           start_time: "$start_time",
+  //           end_time: "$end_time",
+  //           hotel_name: "$hotel_name",
+  //           disposition: "$disposition",
+  //           remark: "$remark",
+  //           type: "$type",
+  //           talktime: "$talktime",
+  //           dial_status: "$dial_status",
+  //           last_called: "$last_called",
+  //           last_support_by: "$last_support_by",
+  //           purpose_of_travel: "$purpose_of_trave",
+  //           arrival_date: "$arrival_date",
+  //           department: "$department",
+  //           departure_date: "$departure_date",
+  //           dial_status: "$dial_status",
+  //           caller_type: "$caller_type",
+  //           call_date: "$call_date",
+  //           hotel_destination: "$hotel_destination"
+  //           // include other call record fields here...
+  //         }
+  //       },
+  //       guest: { $first: "$guest" }
+  //     }
+  //   });
 
 
 
-    const data = await callDetails.aggregate(pipeline)
+  //   const data = await callDetails.aggregate(pipeline)
 
-    return res.send(data)
-  }
+  //   return res.send(data)
+  // }
 
 
 
