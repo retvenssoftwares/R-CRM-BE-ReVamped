@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import callsDetails from "../model/callDetails.js"
 import ErrorHandler from "../utils/errorHandler.js";
+import dispositionDetails from "../model/Disposition.js"
 class Reports {
 
   static async getCallVolumeReport(req, res, next) {
@@ -286,12 +287,38 @@ class Reports {
 
 
   static async getAgentPerformance(req, res, next) {
+
+    // const agentId = new mongoose.Types.ObjectId(req.authData._id);
+    // const dispositionId = req.query.disposition;
+
+    // let matchConditions = [
+    //   {
+    //     $match: {
+    //       agent_id: agentId,
+    //     },
+    //   },
+    // ];
+
+    // // Add a $match stage based on the presence of the dispositionId
+    // const data = await dispositionDetails.findById({_id:dispositionId})
+    // console.log(data)
+    // if (dispositionId) {
+    //   matchConditions.push({
+    //     $match: {
+    //       disposition: new mongoose.Types.ObjectId(dispositionId),
+    //     },
+    //   });
+    // }
+
+
+
     const agentPerformance = await callsDetails.aggregate([
       {
         $match: {
           agent_id: new mongoose.Types.ObjectId(req.authData._id),
         },
       },
+      // ...matchConditions,
       {
         $lookup: {
           from: "users",            // Target collection
@@ -316,11 +343,10 @@ class Reports {
             },
           },
           totalCount: { $sum: 1 },
-          agent_id: { $first: "$agent_info.agent_id" }, // Save the agent_id for later use
+          agent_id: { $first: "$agent_info._id" }, // Save the agent_id for later use
           agent_name: { $first: "$agent_info.name" }
         },
       },
-
       {
         $project: {
           _id: 0, // Exclude the _id field from the output
@@ -333,27 +359,24 @@ class Reports {
       },
     ]);
 
-    function secondsToHms(d) {
-      d = Number(d);
-      var h = Math.floor(d / 3600);
-      var m = Math.floor(d % 3600 / 60);
-      var s = Math.floor(d % 3600 % 60);
 
-      var hDisplay = h > 0 ? (h < 10 ? '0' : '') + h + ':' : '00:';
-      var mDisplay = m > 0 ? (m < 10 ? '0' : '') + m + ':' : '00:';
-      var sDisplay = s > 0 ? (s < 10 ? '0' : '') + s : '00';
-      return hDisplay + mDisplay + sDisplay;
-    }
 
-    // Convert totalDurationInSeconds to hh:mm:ss format for each document
-    agentPerformance.forEach(doc => {
-      doc.durationInHMS = secondsToHms(doc.totalDurationInSeconds);
-    });
+    const outboundHours = Math.floor(agentPerformance[0].totalDurationInSeconds / 3600);
+    const outboundMinutes = Math.floor((agentPerformance[0].totalDurationInSeconds % 3600) / 60);
+    const outboundSeconds = agentPerformance[0].totalDurationInSeconds % 60;
+
+    const formattedOutboundDuration = `${outboundHours.toString().padStart(2, '0')}:${outboundMinutes.toString().padStart(2, '0')}:${outboundSeconds.toString().padStart(2, '0')}`;
 
     return res.status(200).json({
       status: true,
       code: 200,
-      data: agentPerformance
+      data: {
+        agent_id: agentPerformance[0].agent_id,
+        agent_name: agentPerformance[0].agent_name,
+        formattedInboundDuration: formattedOutboundDuration,
+        totalCount: agentPerformance[0].totalCount,
+        // Include other fields from agentPerformance as needed
+      }
     })
   }
 
