@@ -48,7 +48,7 @@ class AgentModel {
           guest_last_name,
           guest_mobile_number,
           alternate_contact,
-          email,
+          guest_email,
           guest_address_1,
           guest_address_2,
           city,
