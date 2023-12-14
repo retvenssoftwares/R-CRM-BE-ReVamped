@@ -8,8 +8,9 @@ const call = new mongoose.Schema({
     admin_id: { type: mongoose.Types.ObjectId, },
 
     // employee_status: { type: String },
-    call_date: { type: String, required: true,default:"" },
-    start_time: { type: String,default:"" },
+    call_date: { type: String, required: true },
+    call_time : {type:String},
+    start_time: { type: String },
     disposition: { type: mongoose.Types.ObjectId },
     end_time: { type: String,default:""},
     hotel_name: {

@@ -142,10 +142,13 @@ class AgentModel {
 
       }
 
+      const options = { timeZone: 'Asia/Kolkata' };
+
       let newCalls = await callDetails.create({
         agent_id,
         guest_id,
         call_date: JSON.stringify(new Date()).split("T")[0].slice(1),
+        call_time : new Date().toLocaleString('en-US', options).split(",")[1], 
         caller_type,
         start_time,
         end_time,
