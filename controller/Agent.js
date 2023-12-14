@@ -860,17 +860,9 @@ class AgentModel {
 
       const reasons = await pause_call_dropDown.findOne({ _id: pause_reason });
 
-      if (!reasons) {
-        return res.status(401).json({
-          status: false,
-          code: 401,
-          data: "data not found..",
-        });
-      }
-
       const pauseCall = new PauseCall({
         agent_id: agent_id,
-        pause_reason: reasons.pause_reason,
+        pause_reason: reasons?.pause_reason,
         pause_time: pause_time,
         resume_time: resume_time,
       });
