@@ -288,29 +288,6 @@ class Reports {
 
   static async getAgentPerformance(req, res, next) {
 
-    // const agentId = new mongoose.Types.ObjectId(req.authData._id);
-    // const dispositionId = req.query.disposition;
-
-    // let matchConditions = [
-    //   {
-    //     $match: {
-    //       agent_id: agentId,
-    //     },
-    //   },
-    // ];
-
-    // // Add a $match stage based on the presence of the dispositionId
-    // const data = await dispositionDetails.findById({_id:dispositionId})
-    // console.log(data)
-    // if (dispositionId) {
-    //   matchConditions.push({
-    //     $match: {
-    //       disposition: new mongoose.Types.ObjectId(dispositionId),
-    //     },
-    //   });
-    // }
-
-
 
     const agentPerformance = await callsDetails.aggregate([
       {
@@ -318,7 +295,7 @@ class Reports {
           agent_id: new mongoose.Types.ObjectId(req.authData._id),
         },
       },
-      // ...matchConditions,
+
       {
         $lookup: {
           from: "users",            // Target collection
@@ -327,9 +304,11 @@ class Reports {
           as: "agent_info"            // Alias for the joined documents
         }
       },
+
       {
         $unwind: "$agent_info"
       },
+
       {
         $group: {
           _id: null,
@@ -344,9 +323,10 @@ class Reports {
           },
           totalCount: { $sum: 1 },
           agent_id: { $first: "$agent_info._id" }, // Save the agent_id for later use
-          agent_name: { $first: "$agent_info.name" }
+          agent_name: { $first: "$agent_info.name" },
         },
       },
+
       {
         $project: {
           _id: 0, // Exclude the _id field from the output
@@ -354,11 +334,29 @@ class Reports {
           agent_name: 1, // Include the agent_name field in the output
           totalDurationInSeconds: 1,
           totalCount: 1,
-
         }
       },
     ]);
 
+
+    // reservation call count
+    const [incomingCallsCount, reservationCount] = await Promise.all([
+      callsDetails.countDocuments({ agent_id: new mongoose.Types.ObjectId(req.authData._id) }),
+      dispositionDetails.countDocuments({ name: "Reservation" }),
+    ]);
+
+    // abandonedCall count
+    const AbandonedCall = await callsDetails.countDocuments({
+       agent_id: new mongoose.Types.ObjectId(req.authData._id) ,
+       dial_status : "Rejected"
+    })
+
+    //missed call count
+
+    const MissedCall = await callsDetails.countDocuments({
+      agent_id: new mongoose.Types.ObjectId(req.authData._id) ,
+      dial_status : "Disconnected"
+   })
 
 
     const outboundHours = Math.floor(agentPerformance[0].totalDurationInSeconds / 3600);
@@ -367,6 +365,7 @@ class Reports {
 
     const formattedOutboundDuration = `${outboundHours.toString().padStart(2, '0')}:${outboundMinutes.toString().padStart(2, '0')}:${outboundSeconds.toString().padStart(2, '0')}`;
 
+    //console.log(incomingCallsCount-AbandonedCall-reservationCount)
     return res.status(200).json({
       status: true,
       code: 200,
@@ -375,6 +374,9 @@ class Reports {
         agent_name: agentPerformance[0].agent_name,
         formattedInboundDuration: formattedOutboundDuration,
         totalCount: agentPerformance[0].totalCount,
+        reservationCount: reservationCount,
+        AbandonedCall : AbandonedCall,
+        MissedCall : MissedCall
         // Include other fields from agentPerformance as needed
       }
     })
