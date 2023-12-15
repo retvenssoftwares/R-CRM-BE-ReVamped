@@ -48,7 +48,7 @@ class AgentModel {
           guest_last_name,
           guest_mobile_number,
           alternate_contact,
-          guest_email,
+          email,
           guest_address_1,
           guest_address_2,
           city,
@@ -64,12 +64,12 @@ class AgentModel {
           let newGuest = await guestDetail.create({
             agent_id,
             salutation,
-            date : new Date().toLocaleString('en-US', options).split(",")[1],
+            date : new Date().toLocaleString('en-US', {timeZone: 'Asia/Kolkata'}).split(",")[1],
             guest_first_name,
             guest_last_name,
             guest_mobile_number,
             alternate_contact,
-            email,
+            guest_email:email,
             guest_address_1,
             guest_address_2,
             city,
@@ -143,13 +143,12 @@ class AgentModel {
 
       }
 
-      const options = { timeZone: 'Asia/Kolkata' };
 
       let newCalls = await callDetails.create({
         agent_id,
         guest_id,
         call_date: JSON.stringify(new Date()).split("T")[0].slice(1),
-        call_time : new Date().toLocaleString('en-US', options).split(",")[1], 
+        call_time : new Date().toLocaleString('en-US', {timeZone: 'Asia/Kolkata'}).split(",")[1], 
         caller_type,
         start_time,
         end_time,
