@@ -64,12 +64,12 @@ class AgentModel {
           let newGuest = await guestDetail.create({
             agent_id,
             salutation,
-            date : new Date().toLocaleString('en-US', {timeZone: 'Asia/Kolkata'}).split(",")[1],
+            date: new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }).split(",")[1],
             guest_first_name,
             guest_last_name,
             guest_mobile_number,
             alternate_contact,
-            guest_email:email,
+            guest_email: email,
             guest_address_1,
             guest_address_2,
             city,
@@ -98,11 +98,75 @@ class AgentModel {
       if (!req.body.guest_id) {
         let newuser = await AgentModel.AddGuest(req, res);
         if (newuser.findGuest) {
-          return res.status(409).json({
-            status: false,
-            code: 409,
-            message: "User Already exist",
+          let agent_id = req.authData._id;
+          const {
+            caller_type,
+            start_time,
+            end_time,
+            hotel_name,
+            talktime,
+            time_to_answer,
+            type,
+            callback_time_date,
+            dial_status,
+            last_called,
+            last_support_by,
+            hang_up_by,
+            arrival_date,
+            departure_date,
+            purpose_of_travel,
+            remark,
+            department,
+            disposition,
+            special_occassion,
+          } = req.body;
+
+
+          let hotel_destination = ''
+          if (req.body.hotel_destination) {
+            hotel_destination = req?.body?.hotel_destination.toUpperCase()
+          }
+
+          let newCalls = await callDetails.create({
+            agent_id,
+            guest_id : newuser.findGuest._id,
+            call_date: JSON.stringify(new Date()).split("T")[0].slice(1),
+            call_time: new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }).split(",")[1],
+            caller_type,
+            start_time,
+            end_time,
+            hotel_name,
+            talktime,
+            admin_id: req?.authData?.admin_id,
+            time_to_answer,
+            type,
+            callback_time_date,
+            dial_status,
+            last_called,
+            last_support_by,
+            hang_up_by,
+            arrival_date,
+            reservationIds: randomString(7),
+            departure_date,
+            purpose_of_travel,
+            remark,
+            department,
+            hotel_destination,
+            disposition,
+            special_occassion,
           });
+
+          return res.status(200).json({
+            status: true,
+            code: 200,
+            message: "Call detail added...",
+            data: newCalls,
+          });
+          // return res.status(409).json({
+          //   status: false,
+          //   code: 409,
+          //   message: "User Already exist",
+          // });
         } else if (newuser.role) {
           return res.status(401).json({
             status: false,
@@ -112,6 +176,9 @@ class AgentModel {
         }
         guest_id = newuser._id;
       }
+
+
+
 
       let agent_id = req.authData._id;
       const {
@@ -148,7 +215,7 @@ class AgentModel {
         agent_id,
         guest_id,
         call_date: JSON.stringify(new Date()).split("T")[0].slice(1),
-        call_time : new Date().toLocaleString('en-US', {timeZone: 'Asia/Kolkata'}).split(",")[1], 
+        call_time: new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }).split(",")[1],
         caller_type,
         start_time,
         end_time,
@@ -504,9 +571,9 @@ class AgentModel {
               {
                 agent_id: new mongoose.Types.ObjectId(req.authData._id),
               },
-                {
-                  department: "RESERVATION",
-                },
+              {
+                department: "RESERVATION",
+              },
             ],
           },
         },
@@ -521,13 +588,13 @@ class AgentModel {
         {
           $unwind: "$guest",
         },
-        
+
         {
           $sort: {
             _id: -1,
           },
         },
-       // New stage for matching disposition
+        // New stage for matching disposition
         {
           $lookup: {
             from: "dispositions",
@@ -548,7 +615,7 @@ class AgentModel {
           },
         },
       ];
-      
+
       if (req.query.disposition) {
         let dispositionId = req.query.disposition;
         condition.unshift({
@@ -557,9 +624,9 @@ class AgentModel {
           },
         });
       }
-      
+
       let findCall = await callDetails.aggregate(condition);
-      
+
 
       return res.status(200).json({
         status: true,
