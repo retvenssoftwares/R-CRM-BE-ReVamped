@@ -48,9 +48,10 @@ class AgentModel {
           guest_last_name,
           guest_mobile_number,
           alternate_contact,
-          email,
+          guest_email,
           guest_address_1,
           guest_address_2,
+          zip_code,
           city,
           state,
           country,
@@ -64,15 +65,16 @@ class AgentModel {
           let newGuest = await guestDetail.create({
             agent_id,
             salutation,
-            date: new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }).split(",")[1],
+            date: JSON.stringify(new Date()).split("T")[0].slice(1),
             guest_first_name,
             guest_last_name,
             guest_mobile_number,
             alternate_contact,
-            guest_email: email,
+            guest_email,
             guest_address_1,
             guest_address_2,
             city,
+            zip_code,
             state,
             country,
           });
@@ -346,7 +348,7 @@ class AgentModel {
           { type: "Inbound" },
           { agent_id: new mongoose.Types.ObjectId(req.authData._id) },
           {
-            dial_status: "Missed",
+            dial_status: "Disconnected",// added as disconnected
           },
         ],
       });
@@ -356,7 +358,7 @@ class AgentModel {
           { type: "Outbound" },
           { agent_id: new mongoose.Types.ObjectId(req.authData._id) },
           {
-            dial_status: "Missed",
+            dial_status: "Disconnected", // added as disconnected
           },
         ],
       });
@@ -367,6 +369,7 @@ class AgentModel {
           {
             dial_status: "Rejected",
           },
+          { type: "Outbound" }, /// added
         ],
       });
 
@@ -379,6 +382,7 @@ class AgentModel {
           },
         }
       ]);
+
       const CallTimeOutgoing = await callDetails.aggregate([
         {
           $match: {
@@ -404,8 +408,9 @@ class AgentModel {
       }))
 
       const avgCallTimeIncoming = sumCallTimeIncoming / CallTimeIncoming.length;
+     
       const avgCallTimeOutgoing = sumCallTimeOutgoing / CallTimeOutgoing.length;
-
+     
       let data1 = [
         {
           type: "Total Calls",
@@ -609,7 +614,7 @@ class AgentModel {
         {
           $project: {
             hotel_name: 1,
-            guest_name: "$guest.guest_first_name",
+            guest_first_name: "$guest.guest_first_name",
             guest_last_name: "$guest.guest_last_name",
             arrival_date: 1,
           },
