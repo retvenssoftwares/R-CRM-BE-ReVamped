@@ -779,7 +779,7 @@ class AgentModel {
       if (req.query.missed) {
         condition.push({
           $match: {
-            dial_status: "Missed",
+            dial_status: "Disconnected",
           },
         });
       }
@@ -1246,8 +1246,8 @@ class AgentModel {
   static async updateAgent(req, res, next) {
 
     if (req.authData.role === "ADMIN") {
-      const { _id, first_name, gender, date_of_birth, contact, email, department, designation, password } = req.body;
-      console.log(first_name)
+      const { _id, first_name, gender, date_of_birth, contact, email, department, designation, password, displayStatus } = req.body;
+    
 
       if (!_id) {
         return res.status(401).json({
@@ -1257,7 +1257,7 @@ class AgentModel {
         });
       }
 
-      if (first_name && gender && date_of_birth && contact && email && department && designation && password) {
+      if (first_name && gender && date_of_birth && contact && email && department && designation && password && displayStatus) {
         return res.status(401).json({
           status: false,
           code: 401,
@@ -1270,6 +1270,7 @@ class AgentModel {
         let updateFields = {
           name: first_name,
           email: email,
+          displayStatus : displayStatus,
           phone_number: contact,
           designation: designation,
           department: department,

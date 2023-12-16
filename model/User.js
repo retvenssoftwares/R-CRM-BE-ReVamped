@@ -35,6 +35,7 @@ const userSchema = new Schema(
     phone_number: { type: Number, default:"" },
     gender : { type : String , enum : ['MALE', 'FEMALE','OTHER'] },
     dob : { type: String, default:"" },
+    displayStatus : {type:String , default : "1"},
     password: { type: String, required: true},
     role : { type : String, default : "ADMIN"},
     status : { type : String , enum : ['ACTIVE', 'INACTIVE'] , default : "ACTIVE"},
