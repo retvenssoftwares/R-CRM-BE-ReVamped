@@ -133,7 +133,7 @@ class AdminModel {
     }
   }
 
-
+//
   static async AddUser(req, res, next) {
     try {
       if (req.authData.role === "ADMIN") {
