@@ -1282,6 +1282,19 @@ class AdminModel {
             admin_id: new mongoose.Types.ObjectId(req.authData._id),
           },
         },
+
+        {
+          $lookup: {
+            from: "dispositions",
+            localField: "disposition",
+            foreignField: "_id",
+            as: "disposition",
+          },
+        },
+        {
+          $unwind: "$disposition",
+        },
+
       ];
 
       if (req.query.type) {
@@ -1355,11 +1368,25 @@ class AdminModel {
 
       let pipeline = [];
 
-      pipeline.push({
-        $match: {
-          admin_id: new mongoose.Types.ObjectId(admin_id)
+      pipeline.push(
+        {
+          $match: {
+            admin_id: new mongoose.Types.ObjectId(admin_id),
+          },
+        },
+        {
+          $lookup: {
+            from: "dispositions",
+            localField: "disposition",
+            foreignField: "_id",
+            as: "disposition",
+          },
+        },
+        {
+          $unwind: "$disposition",
         }
-      })
+      );
+
 
       if (req.query.type) {
         pipeline.push({
@@ -1604,7 +1631,7 @@ class AdminModel {
             guest: { $first: "$guests" }
             // Add other fields you want to include in the grouping
           },
-          
+
         }
       ];
 
