@@ -229,7 +229,8 @@ class AdminModel {
   static async AdminSignUp(req, res, next) {
     try {
       const email = req.body.email;
-      const password = req.body.password;
+      const  name = req.body.name;
+       const password = req.body.password;
       const phone_number = req.body.phone_number;
       const dob = req.body.dob;
       const gender = req.body.gender;
@@ -258,6 +259,7 @@ class AdminModel {
         phone_number: phone_number,
         email: email,
         dob: dob,
+        name:name,
         gender: gender,
         password: encryptedPassword,
         otp: otp,

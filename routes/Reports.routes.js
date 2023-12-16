@@ -6,5 +6,6 @@ const router = express.Router();
 router.get('/getCallVolume',verifyJwt,report.getCallVolumeReport)
 router.get('/getAvgCallDuration',verifyJwt,report.getCallDurationReport)
 router.get('/getCallOutCome',verifyJwt,report.getCallOutComeReport)
+router.get('/getCallResolution',verifyJwt,report.getFirstCallResolutionReport)
 
 export default router

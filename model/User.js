@@ -30,7 +30,7 @@ const { Schema, model } = mongoose;
 
 const userSchema = new Schema(
   {
-    name: { type: String, required: true, default: "User", default:""},
+    name: { type: String, default:""},
     email: { type: String, default:"" },
     phone_number: { type: Number, default:"" },
     gender : { type : String , enum : ['MALE', 'FEMALE','OTHER'] },
