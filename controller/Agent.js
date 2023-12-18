@@ -651,6 +651,7 @@ class AgentModel {
 
   static async dispositionGraph(req, res, next) {
     try {
+      let currentDate = req.query.date ? new Date(req.query.date) : new Date();
       let condition = [{ $match: {} }];
       if (req.query.type) {
         let startDate = JSON.stringify(new Date()).split("T")[0].slice(1);
@@ -658,12 +659,12 @@ class AgentModel {
 
         if (req.query.type === "WEEK") {
           endDate =
-            new Date().setUTCHours(0, 0, 0, 0) - 7 * 24 * 60 * 60 * 999.99;
+            currentDate.setUTCHours(0, 0, 0, 0) - 7 * 24 * 60 * 60 * 999.99;
         }
 
         if (req.query.type === "MONTH") {
           endDate =
-            new Date().setUTCHours(0, 0, 0, 0) - 30 * 24 * 60 * 60 * 999.99;
+            currentDate.setUTCHours(0, 0, 0, 0) - 30 * 24 * 60 * 60 * 999.99;
         }
 
         condition.unshift({
@@ -1044,7 +1045,7 @@ class AgentModel {
   static async CallsBarGraph(req, res, next) {
     try {
       const agent_id = req.authData?._id;
-      let currentDate = new Date();
+      let currentDate = req.query.date ? new Date(req.query.date) : new Date();
       let result = [];
       for (let i = 0; i < 7; i++) {
         let firstDayOfMonth;

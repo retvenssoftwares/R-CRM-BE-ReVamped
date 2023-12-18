@@ -141,11 +141,11 @@ class GuestDeatils {
                 {
                     $unwind: "$guests"
                 },
-                {
-                    $match: {
-                        "guests.date": {$gte: req.query.from , $lte: req.query.to}
-                    }
-                },
+                // {
+                //     $match: {
+                //         "guests.date": {$gte: req.query.from , $lte: req.query.to}
+                //     }
+                // },
                 {
                     $lookup: {
                         from: "calling_details",
@@ -194,6 +194,7 @@ class GuestDeatils {
                 });
             }
         } else if (req.authData.role === 'AGENT') {
+            console.log("gvhbjnk")
             const agentId = req.authData._id;
             let pipeline = [
                 {
@@ -212,11 +213,11 @@ class GuestDeatils {
                 {
                     $unwind: "$guests"
                 },
-                {
-                    $match: {
-                        "guests.date": {$gte: req.query.from , $lte: req.query.to}
-                    }
-                },
+                // {
+                //     $match: {
+                //         "guests.date": {$gte: req.query.from , $lte: req.query.to}
+                //     }
+                // },
                 {
                     $lookup: {
                         from: "calling_details",

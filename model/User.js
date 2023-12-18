@@ -49,7 +49,10 @@ const userSchema = new Schema(
     coral_admin_username : {type : String, default:""},
     coral_admin_password : {type : String, default:""},
     designation : {type : String, default:""},
-    department:{type:String, default:""}
+    department:{type:String, default:""},
+    profile_pic:{type:String, default:""},
+    org_name:{type:String, default:""},
+    org_logo:{type:String, default:""}
   },
   { versionKey: false, timestamp : true }
 );

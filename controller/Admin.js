@@ -111,16 +111,26 @@ class AdminModel {
       const _id = findUser._id;
       const role = findUser.role;
       const name = findUser.name;
-      let payload = { _id, role, name, email };
+      const org_logo = findUser?.org_logo;
+      const org_name = findUser?.org_name;
+      const profile_pic = findUser?.profile_pic
+      let payload = { _id, role, name, email, org_name, org_logo, profile_pic };
       if (findUser.role === "AGENT") {
         payload.admin_id = findUser.created_by;
+        const pipeline = [{
+          $match : {
+            created_by : new ObjectId 
+          }
+        }]
+
+        const details = User.aggregate(pipeline)
+
+        
       }
 
 
+
       const jwtToken = await signJwt(payload);
-
-
-
 
       return res.status(200).json({
         status: true,
@@ -133,7 +143,7 @@ class AdminModel {
     }
   }
 
-//
+  //
   static async AddUser(req, res, next) {
     try {
       if (req.authData.role === "ADMIN") {
@@ -229,11 +239,14 @@ class AdminModel {
   static async AdminSignUp(req, res, next) {
     try {
       const email = req.body.email;
-      const  name = req.body.name;
-       const password = req.body.password;
+      const name = req.body.name;
+      const password = req.body.password;
       const phone_number = req.body.phone_number;
       const dob = req.body.dob;
       const gender = req.body.gender;
+      const org_name = req.body.org_name;
+      const org_logo = req.body.org_logo;
+      const profile_pic = req.body.profile_pic
 
       if (!email || !password || !phone_number || !dob) {
         return res.status(422).json({
@@ -259,15 +272,18 @@ class AdminModel {
         phone_number: phone_number,
         email: email,
         dob: dob,
-        name:name,
+        name: name,
         gender: gender,
         password: encryptedPassword,
         otp: otp,
         expires: expires,
+        org_name: org_name,
+        org_logo: org_logo,
+        profile_pic: profile_pic,
         is_verified: true, // This is on hold after that superAdmin will verify Admin
       });
       const { _id } = user;
-      const jwtToken = await signJwt({ _id, email });
+      const jwtToken = await signJwt({ _id, email, org_name, org_logo, profile_pic });
 
       await sendMail({
         email: email,
@@ -391,7 +407,7 @@ class AdminModel {
         status: true,
         code: 200,
         message: "OTP send to your mail...",
-        data: { _id: user._id },
+        data: { _id: user._id, email: user.email },
       });
     } catch (error) {
       return next(new ErrorHandler(error.message, 500));
@@ -507,17 +523,25 @@ class AdminModel {
 
   static async resendOTP(req, res, next) {
     try {
-      const userId = req.authData._id;
-      if (!userId) {
-        return res.status(402).json({
-          status: false,
-          code: 402,
-          message: "Something went wrong!!",
-        });
-      }
+      // const userId = req.authData._id;
+      // if (!userId) {
+      //   return res.status(402).json({
+      //     status: false,
+      //     code: 402,
+      //     message: "Something went wrong!!",
+      //   });
+      // }
+      const { email } = req.body
       const expires = new Date(new Date().getTime() + 5 * 60 * 1000).getTime();
       const otp = generateRandomNumber();
-      let user = await User.findByIdAndUpdate(userId, {
+      // let user = await User.findByIdAndUpdate(userId, {
+      //   $set: {
+      //     otp,
+      //     expires,
+      //   },
+      // }).lean();
+
+      let user = await User.updateOne({email : email},{
         $set: {
           otp,
           expires,
@@ -541,6 +565,40 @@ class AdminModel {
           message: "Something went wrong!!",
         });
       }
+
+      return res.status(200).json({
+        status: true,
+        code: 200,
+        message: "otp is send to your email successfully",
+      });
+    } catch (error) {
+      return next(new ErrorHandler(error.message, 500));
+    }
+  }
+
+  // resend otp in login
+
+  static async resendOTPForLogin(req, res, next) {
+    try {
+      const { email } = req.body
+      const expires = new Date(new Date().getTime() + 5 * 60 * 1000).getTime();
+      const otp = generateRandomNumber();
+      let user = await User.updateOne({email : email},{
+        $set: {
+          otp,
+          expires,
+        },
+      }).lean();
+  
+      await sendMail({
+        email: user.email,
+        subject: "OTP For Validating Email",
+        template: "otp-mail.ejs",
+        data: {
+          name: user.name ? user.name : "USER",
+          otp: otp,
+        },
+      });
 
       return res.status(200).json({
         status: true,
@@ -900,7 +958,7 @@ class AdminModel {
   static async CallsMonthBarGraph(req, res, next) {
     try {
       const admin_id = req.authData?._id;
-      let currentDate = new Date();
+      let currentDate = req.query.date ? new Date(req.query.date) : new Date();
       let result = [];
       for (let i = 0; i < 7; i++) {
         let firstDayOfMonth;
@@ -1611,9 +1669,9 @@ class AdminModel {
           $unwind: "$guests"
         },
         {
-            $match: {
-                "guests.date": {$gte: req.query.from , $lte: req.query.to}
-            }
+          $match: {
+            "guests.date": { $gte: req.query.from, $lte: req.query.to }
+          }
         },
         {
           $lookup: {
@@ -1656,6 +1714,37 @@ class AdminModel {
         });
       }
     }
+  }
+
+  static async addDisposition(req, res, next) {
+
+    try {
+      const _id = req.authData._id
+      if (req.authData.role === "ADMIN") {
+        const disposition = dispositions.create({
+          name: req.body.name,
+          short_code: req.body.short_code,
+          addedBy: _id
+        })
+
+        console.log(disposition)
+
+        return res.status(200).json({
+          success: true,
+          code: 200,
+          data: disposition
+        });
+      }
+
+    } catch (err) {
+      return res.status(500).json({
+        success: false,
+        code: 500,
+        error: err.message
+      });
+    }
+
+
 
 
   }
