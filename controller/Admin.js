@@ -118,13 +118,13 @@ class AdminModel {
       let payload = { _id, role, name, email, org_name, org_logo, profile_pic };
       if (findUser.role === "AGENT") {
         payload.admin_id = findUser.created_by;
-        
-        const data = await User.findById({_id : new mongoose.Types.ObjectId(findUser._id)})
-        const result = await User.findById ({_id : new mongoose.Types.ObjectId(data.created_by)})
+
+        const data = await User.findById({ _id: new mongoose.Types.ObjectId(req.authData._id) })
+        const result = await User.findById({ _id: new mongoose.Types.ObjectId(data.created_by) })
 
         payload.org_logo = result.org_logo,
-        payload.org_name = result.org_name
-       
+          payload.org_name = result.org_name
+
       }
 
 
@@ -522,25 +522,18 @@ class AdminModel {
 
   static async resendOTP(req, res, next) {
     try {
-      // const userId = req.authData._id;
-      // if (!userId) {
-      //   return res.status(402).json({
-      //     status: false,
-      //     code: 402,
-      //     message: "Something went wrong!!",
-      //   });
-      // }
-      const { email } = req.body
+      const userId = req.authData._id;
+      if (!userId) {
+        return res.status(402).json({
+          status: false,
+          code: 402,
+          message: "Something went wrong!!",
+        });
+      }
+
       const expires = new Date(new Date().getTime() + 5 * 60 * 1000).getTime();
       const otp = generateRandomNumber();
-      // let user = await User.findByIdAndUpdate(userId, {
-      //   $set: {
-      //     otp,
-      //     expires,
-      //   },
-      // }).lean();
-
-      let user = await User.updateOne({ email: email }, {
+      let user = await User.findByIdAndUpdate(userId, {
         $set: {
           otp,
           expires,
@@ -590,14 +583,14 @@ class AdminModel {
       }).lean();
 
       await sendMail({
-        email: user.email,
+        email: email,
         subject: "OTP For Validating Email",
         template: "otp-mail.ejs",
         data: {
-          name: user.name ? user.name : "USER",
           otp: otp,
         },
-      });
+    });
+    
 
       return res.status(200).json({
         status: true,
