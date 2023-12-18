@@ -114,18 +114,17 @@ class AdminModel {
       const org_logo = findUser?.org_logo;
       const org_name = findUser?.org_name;
       const profile_pic = findUser?.profile_pic
+
       let payload = { _id, role, name, email, org_name, org_logo, profile_pic };
       if (findUser.role === "AGENT") {
         payload.admin_id = findUser.created_by;
-        const pipeline = [{
-          $match : {
-            created_by : new ObjectId 
-          }
-        }]
-
-        const details = User.aggregate(pipeline)
-
         
+        const data = await User.findById({_id : new mongoose.Types.ObjectId(findUser._id)})
+        const result = await User.findById ({_id : new mongoose.Types.ObjectId(data.created_by)})
+
+        payload.org_logo = result.org_logo,
+        payload.org_name = result.org_name
+       
       }
 
 
@@ -541,7 +540,7 @@ class AdminModel {
       //   },
       // }).lean();
 
-      let user = await User.updateOne({email : email},{
+      let user = await User.updateOne({ email: email }, {
         $set: {
           otp,
           expires,
@@ -583,13 +582,13 @@ class AdminModel {
       const { email } = req.body
       const expires = new Date(new Date().getTime() + 5 * 60 * 1000).getTime();
       const otp = generateRandomNumber();
-      let user = await User.updateOne({email : email},{
+      let user = await User.updateOne({ email: email }, {
         $set: {
           otp,
           expires,
         },
       }).lean();
-  
+
       await sendMail({
         email: user.email,
         subject: "OTP For Validating Email",
