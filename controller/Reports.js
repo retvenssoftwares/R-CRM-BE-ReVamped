@@ -42,7 +42,7 @@ class Reports {
       //Missed call count
       const missedCallsCount = await callsDetails.countDocuments({
         admin_id: new mongoose.Types.ObjectId(admin_Id),
-        type:"Inbound",
+        type: "Inbound",
         dial_status: "Disconnected",
 
       })
@@ -112,7 +112,7 @@ class Reports {
         },
       ]);
       console.log(totalDuration);
-/////////////////////////////////////////////////////////////
+      /////////////////////////////////////////////////////////////
       // Extract total duration from aggregation result
       const totalSeconds = totalDuration.length > 0 ? totalDuration[0].totalDurationInSeconds : 0;
       console.log(totalSeconds)
@@ -125,12 +125,12 @@ class Reports {
       const formattedDuration = `${hours.toString().padStart(2, "0")}:${minutes
         .toString()
         .padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
-console.log(formattedDuration)
-///////////////////////////////////////////////////////////////////////////
+      console.log(formattedDuration)
+      ///////////////////////////////////////////////////////////////////////////
       // Calculate average call duration
       const averageDurationSeconds =
         totalCount > 0 ? totalSeconds / totalCount : 0;
-        console.log("avg",averageDurationSeconds)
+      console.log("avg", averageDurationSeconds)
 
       // Convert average duration to HH:MM:SS format
       const avgHours = Math.floor(averageDurationSeconds / 3600);
@@ -139,29 +139,29 @@ console.log(formattedDuration)
       const formattedAvgDuration = `${avgHours
         .toString()
         .padStart(2, "0")}:${avgMinutes
-        .toString()
-        .padStart(2, "0")}:${avgSeconds.toString().padStart(2, "0")}`;
-        console.log("avg",formattedAvgDuration)
-  ////////////////////////////////////////////////////////////////////////////
-  // Extract min and max durations from aggregation result
-const minDuration =
-  totalDuration.length > 0 ? totalDuration[0].minDuration : "00:00:00";
-const maxDuration =
-  totalDuration.length > 0 ? totalDuration[0].maxDuration : "00:00:00";
+          .toString()
+          .padStart(2, "0")}:${avgSeconds.toString().padStart(2, "0")}`;
+      console.log("avg", formattedAvgDuration)
+      ////////////////////////////////////////////////////////////////////////////
+      // Extract min and max durations from aggregation result
+      const minDuration =
+        totalDuration.length > 0 ? totalDuration[0].minDuration : "00:00:00";
+      const maxDuration =
+        totalDuration.length > 0 ? totalDuration[0].maxDuration : "00:00:00";
 
-// Function to format duration in HH:MM:SS format
-const formatDuration = (duration) => {
-  const [hours, minutes, seconds] = duration.split(":").map(Number);
-  return `${hours.toString().padStart(2, "0")}:${minutes
-    .toString()
-    .padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
-};
+      // Function to format duration in HH:MM:SS format
+      const formatDuration = (duration) => {
+        const [hours, minutes, seconds] = duration.split(":").map(Number);
+        return `${hours.toString().padStart(2, "0")}:${minutes
+          .toString()
+          .padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
+      };
 
-// Format min and max durations
-const formattedMinDuration = formatDuration(minDuration);
-const formattedMaxDuration = formatDuration(maxDuration);
+      // Format min and max durations
+      const formattedMinDuration = formatDuration(minDuration);
+      const formattedMaxDuration = formatDuration(maxDuration);
 
-   ///////////////////////////////////////////////////////////////////////////////     
+      ///////////////////////////////////////////////////////////////////////////////     
       // Total call duration for Inbound calls
       const inboundTotalDuration = await callsDetails.aggregate([
         {
@@ -271,8 +271,8 @@ const formattedMaxDuration = formatDuration(maxDuration);
             inboundAverageDuration: formattedInboundAvgDuration,
             outboundTotalDuration: formattedOutboundDuration,
             outboundAverageDuration: formattedOutboundAvgDuration,
-            minDuration:formattedMinDuration,
-            maxDuration:formattedMaxDuration
+            minDuration: formattedMinDuration,
+            maxDuration: formattedMaxDuration
           },
         ],
       });
@@ -343,25 +343,25 @@ const formattedMaxDuration = formatDuration(maxDuration);
       const totalDuration = await callsDetails.aggregate([
         {
           $match: { admin_id: new mongoose.Types.ObjectId(admin_Id) },
-        
-         
+
+
         },
         {
           $lookup: {
-              from: "dispositions",
-              localField: "disposition",
-              foreignField: "_id",
-              as: "dispositions"
+            from: "dispositions",
+            localField: "disposition",
+            foreignField: "_id",
+            as: "dispositions"
           }
-      },
-      {
-        $unwind: "$dispositions"
-    },
-    {
-        $match: {
+        },
+        {
+          $unwind: "$dispositions"
+        },
+        {
+          $match: {
             "dispositions.name": "Reservation",
-        }
-    },
+          }
+        },
         {
           $group: {
             _id: null,
@@ -415,19 +415,19 @@ const formattedMaxDuration = formatDuration(maxDuration);
         .toString()
         .padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
 
-           // Calculate average call duration
+      // Calculate average call duration
       const averageDurationSeconds =
-      totalCount > 0 ? totalSeconds / totalCount : 0;
-console.log(averageDurationSeconds)
-    // Convert average duration to HH:MM:SS format
-    const avgHours = Math.floor(averageDurationSeconds / 3600);
-    const avgMinutes = Math.floor((averageDurationSeconds % 3600) / 60);
-    const avgSeconds = Math.floor(averageDurationSeconds % 60);
-    const formattedAvgDuration = `${avgHours
-      .toString()
-      .padStart(2, "0")}:${avgMinutes
-      .toString()
-      .padStart(2, "0")}:${avgSeconds.toString().padStart(2, "0")}`;
+        totalCount > 0 ? totalSeconds / totalCount : 0;
+      console.log(averageDurationSeconds)
+      // Convert average duration to HH:MM:SS format
+      const avgHours = Math.floor(averageDurationSeconds / 3600);
+      const avgMinutes = Math.floor((averageDurationSeconds % 3600) / 60);
+      const avgSeconds = Math.floor(averageDurationSeconds % 60);
+      const formattedAvgDuration = `${avgHours
+        .toString()
+        .padStart(2, "0")}:${avgMinutes
+          .toString()
+          .padStart(2, "0")}:${avgSeconds.toString().padStart(2, "0")}`;
 
       return res.status(200).json({
         status: true,
@@ -450,7 +450,7 @@ console.log(averageDurationSeconds)
 
   ///////////////////////////////////////////////////////////////////////////////////////
 
-  static async getFirstCallResolutionReport (req,res,next){
+  static async getFirstCallResolutionReport(req, res, next) {
     try {
       // Admin Id from AuthData
       const admin_Id = req.authData?._id;
@@ -472,68 +472,68 @@ console.log(averageDurationSeconds)
         dial_status: "Connected",
       });
 
-     
+
       // Find the first inbound call made by each agent with different guest IDs
-    const firstInboundCallsByAgent = await callsDetails.aggregate([
-      {
-        $match: {
-          admin_id: new mongoose.Types.ObjectId(admin_Id),
-          type: "Inbound",
-          guest_id: { $exists: true } // Assuming there's a field for guest ID
-        }
-      },
-      {
-        $group: {
-          _id: { agent_id: "$agent_id", guest_id: "$guest_id" }, // Grouping by agent_id and guest_id
-          firstCall: { $min: "$call_date" }, // Finding the minimum call date (first call)
-          records: { $push: "$$ROOT" } // Pushing all records for later retrieval
-        }
-      },
-      {
-        $group: {
-          _id: "$_id.guest_id", // Grouping by guest_id only
-          firstCalls: {
-            $push: {
-              firstCall: "$firstCall",
-              records: "$records"
+      const firstInboundCallsByAgent = await callsDetails.aggregate([
+        {
+          $match: {
+            admin_id: new mongoose.Types.ObjectId(admin_Id),
+            type: "Inbound",
+            guest_id: { $exists: true } // Assuming there's a field for guest ID
+          }
+        },
+        {
+          $group: {
+            _id: { agent_id: "$agent_id", guest_id: "$guest_id" }, // Grouping by agent_id and guest_id
+            firstCall: { $min: "$call_date" }, // Finding the minimum call date (first call)
+            records: { $push: "$$ROOT" } // Pushing all records for later retrieval
+          }
+        },
+        {
+          $group: {
+            _id: "$_id.guest_id", // Grouping by guest_id only
+            firstCalls: {
+              $push: {
+                firstCall: "$firstCall",
+                records: "$records"
+              }
             }
           }
-        }
-      },
-      {
-        $lookup: {
-          from: "dispositions", // Assuming the Disposition collection name
-          localField: "firstCalls.records.disposition",
-          foreignField: "_id",
-          as: "matched_dispositions",
         },
-      },
-      {
-        $unwind: "$matched_dispositions",
-      },
-      {
-        $match: {
-          "matched_dispositions.name": "Reservation",
+        {
+          $lookup: {
+            from: "dispositions", // Assuming the Disposition collection name
+            localField: "firstCalls.records.disposition",
+            foreignField: "_id",
+            as: "matched_dispositions",
+          },
         },
-      },
-      {
-        $group: {
-          _id: null,
-          FCR: { $sum: 1 },
+        {
+          $unwind: "$matched_dispositions",
         },
-      },
-      {
-        $project: {
-          _id: 0,
-          FCR: 1,
+        {
+          $match: {
+            "matched_dispositions.name": "Reservation",
+          },
         },
-      },
-      
-      
-      
-    ]);
-    console.log(firstInboundCallsByAgent)
-    
+        {
+          $group: {
+            _id: null,
+            FCR: { $sum: 1 },
+          },
+        },
+        {
+          $project: {
+            _id: 0,
+            FCR: 1,
+          },
+        },
+
+
+
+      ]);
+      console.log(firstInboundCallsByAgent)
+
       return res.status(200).json({
         status: true,
         code: 200,
@@ -543,7 +543,7 @@ console.log(averageDurationSeconds)
             type: "Total Calls",
             totalCalls: incommingCalls + outgoingCalls,
             attendedCalls: connectedCalls,
-            FCRCount:firstInboundCallsByAgent[0].FCR || ''
+            FCRCount: firstInboundCallsByAgent[0].FCR || ''
           },
         ],
       });
@@ -554,7 +554,6 @@ console.log(averageDurationSeconds)
   }
 
 
-  
 }
 
 export default Reports
