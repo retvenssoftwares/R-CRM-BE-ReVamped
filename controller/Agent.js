@@ -48,9 +48,10 @@ class AgentModel {
           guest_last_name,
           guest_mobile_number,
           alternate_contact,
-          email,
+          guest_email,
           guest_address_1,
           guest_address_2,
+          zip_code,
           city,
           state,
           country,
@@ -64,15 +65,16 @@ class AgentModel {
           let newGuest = await guestDetail.create({
             agent_id,
             salutation,
-            date: new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }).split(",")[1],
+            date: JSON.stringify(new Date()).split("T")[0].slice(1),
             guest_first_name,
             guest_last_name,
             guest_mobile_number,
             alternate_contact,
-            guest_email: email,
+            guest_email,
             guest_address_1,
             guest_address_2,
             city,
+            zip_code,
             state,
             country,
           });
@@ -346,7 +348,7 @@ class AgentModel {
           { type: "Inbound" },
           { agent_id: new mongoose.Types.ObjectId(req.authData._id) },
           {
-            dial_status: "Missed",
+            dial_status: "Disconnected",// added as disconnected
           },
         ],
       });
@@ -356,7 +358,7 @@ class AgentModel {
           { type: "Outbound" },
           { agent_id: new mongoose.Types.ObjectId(req.authData._id) },
           {
-            dial_status: "Missed",
+            dial_status: "Disconnected", // added as disconnected
           },
         ],
       });
@@ -367,6 +369,7 @@ class AgentModel {
           {
             dial_status: "Rejected",
           },
+          { type: "Outbound" }, /// added
         ],
       });
 
@@ -379,6 +382,7 @@ class AgentModel {
           },
         }
       ]);
+
       const CallTimeOutgoing = await callDetails.aggregate([
         {
           $match: {
@@ -404,8 +408,9 @@ class AgentModel {
       }))
 
       const avgCallTimeIncoming = sumCallTimeIncoming / CallTimeIncoming.length;
+     
       const avgCallTimeOutgoing = sumCallTimeOutgoing / CallTimeOutgoing.length;
-
+     
       let data1 = [
         {
           type: "Total Calls",
@@ -609,7 +614,7 @@ class AgentModel {
         {
           $project: {
             hotel_name: 1,
-            guest_name: "$guest.guest_first_name",
+            guest_first_name: "$guest.guest_first_name",
             guest_last_name: "$guest.guest_last_name",
             arrival_date: 1,
           },
@@ -646,6 +651,7 @@ class AgentModel {
 
   static async dispositionGraph(req, res, next) {
     try {
+      let currentDate = req.query.date ? new Date(req.query.date) : new Date();
       let condition = [{ $match: {} }];
       if (req.query.type) {
         let startDate = JSON.stringify(new Date()).split("T")[0].slice(1);
@@ -653,12 +659,12 @@ class AgentModel {
 
         if (req.query.type === "WEEK") {
           endDate =
-            new Date().setUTCHours(0, 0, 0, 0) - 7 * 24 * 60 * 60 * 999.99;
+            currentDate.setUTCHours(0, 0, 0, 0) - 7 * 24 * 60 * 60 * 999.99;
         }
 
         if (req.query.type === "MONTH") {
           endDate =
-            new Date().setUTCHours(0, 0, 0, 0) - 30 * 24 * 60 * 60 * 999.99;
+            currentDate.setUTCHours(0, 0, 0, 0) - 30 * 24 * 60 * 60 * 999.99;
         }
 
         condition.unshift({
@@ -774,7 +780,7 @@ class AgentModel {
       if (req.query.missed) {
         condition.push({
           $match: {
-            dial_status: "Missed",
+            dial_status: "Disconnected",
           },
         });
       }
@@ -1039,7 +1045,7 @@ class AgentModel {
   static async CallsBarGraph(req, res, next) {
     try {
       const agent_id = req.authData?._id;
-      let currentDate = new Date();
+      let currentDate = req.query.date ? new Date(req.query.date) : new Date();
       let result = [];
       for (let i = 0; i < 7; i++) {
         let firstDayOfMonth;
@@ -1241,8 +1247,8 @@ class AgentModel {
   static async updateAgent(req, res, next) {
 
     if (req.authData.role === "ADMIN") {
-      const { _id, first_name, gender, date_of_birth, contact, email, department, designation, password } = req.body;
-      console.log(first_name)
+      const { _id, first_name, gender, date_of_birth, contact, email, department, designation, password, displayStatus } = req.body;
+    
 
       if (!_id) {
         return res.status(401).json({
@@ -1252,7 +1258,7 @@ class AgentModel {
         });
       }
 
-      if (first_name && gender && date_of_birth && contact && email && department && designation && password) {
+      if (first_name && gender && date_of_birth && contact && email && department && designation && password && displayStatus) {
         return res.status(401).json({
           status: false,
           code: 401,
@@ -1265,6 +1271,7 @@ class AgentModel {
         let updateFields = {
           name: first_name,
           email: email,
+          displayStatus : displayStatus,
           phone_number: contact,
           designation: designation,
           department: department,

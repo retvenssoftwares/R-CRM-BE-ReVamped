@@ -35,6 +35,7 @@ const userSchema = new Schema(
     phone_number: { type: Number, default:"" },
     gender : { type : String , enum : ['MALE', 'FEMALE','OTHER'] },
     dob : { type: String, default:"" },
+    displayStatus : {type:String , default : "1"},
     password: { type: String, required: true},
     role : { type : String, default : "ADMIN"},
     status : { type : String , enum : ['ACTIVE', 'INACTIVE'] , default : "ACTIVE"},
@@ -48,7 +49,10 @@ const userSchema = new Schema(
     coral_admin_username : {type : String, default:""},
     coral_admin_password : {type : String, default:""},
     designation : {type : String, default:""},
-    department:{type:String, default:""}
+    department:{type:String, default:""},
+    profile_pic:{type:String, default:""},
+    org_name:{type:String, default:""},
+    org_logo:{type:String, default:""}
   },
   { versionKey: false, timestamp : true }
 );

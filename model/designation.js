@@ -2,9 +2,9 @@ import mongoose from "mongoose";
 
 const { Schema, model } = mongoose;
 
-const dispositionSchema = mongoose.Schema(
+const designationSchema = mongoose.Schema(
   {
-    name: {
+    designation: {
       type: String,
       default:""
     },
@@ -28,5 +28,5 @@ const dispositionSchema = mongoose.Schema(
   { versionKey: false }
 );
 
-const Disposition = model("disposition", dispositionSchema);
-export default Disposition;
+const designation = model("designation", designationSchema);
+export default designation;

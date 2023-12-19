@@ -13,7 +13,8 @@ import CallDetail from "../model/callDetails.js";
 import mongoose from "mongoose";
 import dispositions from "../model/Disposition.js";
 import { formatTime } from "../utils/formattime.js";
-
+import departments from "../model/department.js"
+import designations from "../model/designation.js";
 dotenv.config({ path: "./.env" });
 
 let BASE_URL = process.env.BASE_URL;
@@ -111,16 +112,26 @@ class AdminModel {
       const _id = findUser._id;
       const role = findUser.role;
       const name = findUser.name;
-      let payload = { _id, role, name, email };
+      const org_logo = findUser?.org_logo;
+      const org_name = findUser?.org_name;
+      const profile_pic = findUser?.profile_pic
+
+      let payload = { _id, role, name, email, org_name, org_logo, profile_pic };
       if (findUser.role === "AGENT") {
+
         payload.admin_id = findUser.created_by;
+
+        const data = await User.findOne({ email: email })
+        const result = await User.findById({ _id: new mongoose.Types.ObjectId(data.created_by) })
+
+        payload.org_logo = result.org_logo,
+          payload.org_name = result.org_name
+
       }
 
 
+
       const jwtToken = await signJwt(payload);
-
-
-
 
       return res.status(200).json({
         status: true,
@@ -133,7 +144,7 @@ class AdminModel {
     }
   }
 
-//
+  //
   static async AddUser(req, res, next) {
     try {
       if (req.authData.role === "ADMIN") {
@@ -145,6 +156,7 @@ class AdminModel {
         let password = req.body.password;
         let designation = req.body.designation;
         let department = req.body.department;
+        let profile_pic = req.body.profile_pic
 
         let findOldUser = await User.findOne({ email }).lean();
         let findAgent = await User.find({ role: "AGENT" }).lean();
@@ -172,6 +184,7 @@ class AdminModel {
             // agent_text: req.query.ext_name,
             designation: designation,
             department: department,
+            profile_pic : profile_pic,
             role: "AGENT",
           });
 
@@ -229,11 +242,14 @@ class AdminModel {
   static async AdminSignUp(req, res, next) {
     try {
       const email = req.body.email;
-      const  name = req.body.name;
-       const password = req.body.password;
+      const name = req.body.name;
+      const password = req.body.password;
       const phone_number = req.body.phone_number;
       const dob = req.body.dob;
       const gender = req.body.gender;
+      const org_name = req.body.org_name;
+      const org_logo = req.body.org_logo;
+      const profile_pic = req.body.profile_pic
 
       if (!email || !password || !phone_number || !dob) {
         return res.status(422).json({
@@ -259,15 +275,18 @@ class AdminModel {
         phone_number: phone_number,
         email: email,
         dob: dob,
-        name:name,
+        name: name,
         gender: gender,
         password: encryptedPassword,
         otp: otp,
         expires: expires,
+        org_name: org_name,
+        org_logo: org_logo,
+        profile_pic: profile_pic,
         is_verified: true, // This is on hold after that superAdmin will verify Admin
       });
       const { _id } = user;
-      const jwtToken = await signJwt({ _id, email });
+      const jwtToken = await signJwt({ _id, email, org_name, org_logo, profile_pic });
 
       await sendMail({
         email: email,
@@ -391,7 +410,7 @@ class AdminModel {
         status: true,
         code: 200,
         message: "OTP send to your mail...",
-        data: { _id: user._id },
+        data: { _id: user._id, email: user.email },
       });
     } catch (error) {
       return next(new ErrorHandler(error.message, 500));
@@ -515,6 +534,7 @@ class AdminModel {
           message: "Something went wrong!!",
         });
       }
+
       const expires = new Date(new Date().getTime() + 5 * 60 * 1000).getTime();
       const otp = generateRandomNumber();
       let user = await User.findByIdAndUpdate(userId, {
@@ -541,6 +561,40 @@ class AdminModel {
           message: "Something went wrong!!",
         });
       }
+
+      return res.status(200).json({
+        status: true,
+        code: 200,
+        message: "otp is send to your email successfully",
+      });
+    } catch (error) {
+      return next(new ErrorHandler(error.message, 500));
+    }
+  }
+
+  // resend otp in login
+
+  static async resendOTPForLogin(req, res, next) {
+    try {
+      const { email } = req.body
+      const expires = new Date(new Date().getTime() + 5 * 60 * 1000).getTime();
+      const otp = generateRandomNumber();
+      let user = await User.updateOne({ email: email }, {
+        $set: {
+          otp,
+          expires,
+        },
+      }).lean();
+
+      await sendMail({
+        email: email,
+        subject: "OTP For Validating Email",
+        template: "otp-mail.ejs",
+        data: {
+          otp: otp,
+        },
+      });
+
 
       return res.status(200).json({
         status: true,
@@ -900,7 +954,7 @@ class AdminModel {
   static async CallsMonthBarGraph(req, res, next) {
     try {
       const admin_id = req.authData?._id;
-      let currentDate = new Date();
+      let currentDate = req.query.date ? new Date(req.query.date) : new Date();
       let result = [];
       for (let i = 0; i < 7; i++) {
         let firstDayOfMonth;
@@ -1611,6 +1665,11 @@ class AdminModel {
           $unwind: "$guests"
         },
         {
+          $match: {
+            "guests.date": { $gte: req.query.from, $lte: req.query.to }
+          }
+        },
+        {
           $lookup: {
             from: "calling_details",
             localField: "guests._id",
@@ -1651,8 +1710,192 @@ class AdminModel {
         });
       }
     }
+  }
 
+  static async addDisposition(req, res, next) {
+    try {
+      const _id = req.authData._id
+      if (req.authData.role === "ADMIN") {
+        const disposition = dispositions.create({
+          name: req.body.name,
+          short_code: req.body.short_code,
+          addedBy: _id
+        })
 
+        return res.status(200).json({
+          success: true,
+          code: 200,
+          data: disposition
+        });
+      } else if (req.body.display_status === "0" && req.body.id) {
+        try{
+          const update = await dispositions.updateOne({ _id: new mongoose.Types.ObjectId(id) }, { $set: { display_status: "0" } })
+          if (update){
+            return res.status(200).json({
+              success: true,
+              code: 200,
+              message: "Details updated..."
+            });
+          } else {
+            return res.status(500).json({
+              success: false,
+              code: 500,
+              message: "Something wrong"
+            });
+          }
+        }catch(err){
+          return res.status(500).json({
+            success: false,
+            code: 500,
+            error: err.message
+          });
+        }
+     
+      }
+
+    } catch (err) {
+      return res.status(500).json({
+        success: false,
+        code: 500,
+        error: err.message
+      });
+    }
+
+  }
+
+  static async addDepartment(req, res, next) {
+    try {
+      const _id = req.authData._id
+      if (req.authData.role === "ADMIN") {
+        const department = departments.create({
+          department_name: req.body.department_name,
+          short_code: req.body.short_code,
+          addedBy: _id
+        })
+
+        return res.status(200).json({
+          success: true,
+          code: 200,
+          data: department
+        });
+      } else if (req.body.display_status === "0" && req.body.id) {
+        try {
+          const update = await departments.updateOne({ _id: new mongoose.Types.ObjectId(id) }, { $set: { display_status: "0" } })
+
+          if (update){
+            return res.status(200).json({
+              success: true,
+              code: 200,
+              message: "Details updated..."
+            });
+          } else {
+            return res.status(500).json({
+              success: false,
+              code: 500,
+              message: "Something wrong"
+            });
+          }
+        }
+        catch (err) {
+          return res.status(500).json({
+            success: false,
+            code: 500,
+            error: err.message
+          });
+        }
+      
+      }
+
+    } catch (err) {
+      return res.status(500).json({
+        success: false,
+        code: 500,
+        error: err.message
+      });
+    }
+  }
+
+  static async addDesignation(req, res, next) {
+    try {
+      const _id = req.authData._id
+      if (req.authData.role === "ADMIN") {
+        const designation = designations.create({
+          designation: req.body.designation,
+          short_code: req.body.short_code,
+          addedBy: _id
+        })
+
+        return res.status(200).json({
+          success: true,
+          code: 200,
+          data: designation
+        });
+      } else if (req.body.display_status === "0" && req.body.id) {
+        try {
+          const update = await designations.updateOne({ _id: new mongoose.Types.ObjectId(id) }, { $set: { display_status: "0" } })
+
+          if (update){
+            return res.status(200).json({
+              success: true,
+              code: 200,
+              message: "Details updated..."
+            });
+          } else {
+            return res.status(500).json({
+              success: false,
+              code: 500,
+              message: "Something wrong"
+            });
+          }
+        }
+        catch (err) {
+          return res.status(500).json({
+            success: false,
+            code: 500,
+            error: err.message
+          });
+        }
+      
+      }
+
+    } catch (err) {
+      return res.status(500).json({
+        success: false,
+        code: 500,
+        error: err.message
+      });
+    }
+  }
+
+  static async getDepartMentDesignationDisposition(req,res,next){
+    const department = await departments.findOne({_id : new mongoose.Types.ObjectId(req.body.id)}).lean()
+    const all_department = await departments.find({}).lean()
+
+    const designation = await designations.findOne({_id : new mongoose.Types.ObjectId(req.body.id)}).lean()
+    const all_designation = await designations.find({}).lean() 
+
+    const disposition = await dispositions.findOne({_id : new mongoose.Types.ObjectId(req.body.id)}).lean()
+    const all_disposition = await dispositions.find({}).lean()
+
+    if(department){
+      return res.status(200).json({
+        success: true,
+        code: 200,
+        data: department,
+      });
+    }else if(designation){
+      return res.status(200).json({
+        success: true,
+        code: 200,
+        data: designation,
+      })
+    }else if(disposition){
+      return res.status(200).json({
+        success: true,
+        code: 200,
+        data: disposition,
+      })
+    } 
   }
 }
 

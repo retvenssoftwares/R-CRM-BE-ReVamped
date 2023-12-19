@@ -51,7 +51,6 @@ sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
 const sendMail = async (options) => {
   const { email, subject, template, data } = options;
-
   let __dirname = path.resolve();
 
   // Specify the path to the EJS template

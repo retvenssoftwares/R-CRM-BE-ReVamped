@@ -68,6 +68,7 @@ class GuestDeatils {
                     "country": "$country",
                     "alternate_contact": "$alternate_contact",
                     "createdAt": "$createdAt",
+                    "zip_code":"$zip_code",
                     "updatedAt": "$updatedAt",
 
                 },
@@ -104,7 +105,7 @@ class GuestDeatils {
             // }
 
 
-            
+
 
         ]);
 
@@ -120,6 +121,7 @@ class GuestDeatils {
         let findCalls;
 
         if (req.authData.role === 'ADMIN') {
+            console.log(req.authData._id)
             const adminId = req.authData._id; // Assuming admin's _id is available in req.authData
             let pipeline = [
                 {
@@ -139,14 +141,11 @@ class GuestDeatils {
                 {
                     $unwind: "$guests"
                 },
-                {
-                    $match: {
-                        "guests.date": {
-                            $gt: req?.query?.from,  // Assuming fromDate is defined
-                            $lte: req?.query?.to,    // Assuming toDate is defined
-                        },
-                    },
-                },
+                // {
+                //     $match: {
+                //         "guests.date": {$gte: req.query.from , $lte: req.query.to}
+                //     }
+                // },
                 {
                     $lookup: {
                         from: "calling_details",
@@ -195,6 +194,7 @@ class GuestDeatils {
                 });
             }
         } else if (req.authData.role === 'AGENT') {
+            console.log("gvhbjnk")
             const agentId = req.authData._id;
             let pipeline = [
                 {
@@ -213,6 +213,11 @@ class GuestDeatils {
                 {
                     $unwind: "$guests"
                 },
+                // {
+                //     $match: {
+                //         "guests.date": {$gte: req.query.from , $lte: req.query.to}
+                //     }
+                // },
                 {
                     $lookup: {
                         from: "calling_details",
@@ -273,9 +278,11 @@ class GuestDeatils {
                     guest_first_name: req.body.guest_first_name,
                     guest_last_name: req.body.guest_last_name,
                     guest_mobile_number: req.body.guest_mobile_number,
-                    state : req.body.state,
-                    city:req.body.city,
-                    country:req.body.country,
+                    guest_email : req.body.guest_email,
+                    zip_code:req.body.zip_code,
+                    state: req.body.state,
+                    city: req.body.city,
+                    country: req.body.country,
                     guest_address_1: req.body.guest_address_1,
                     guest_address_2: req.body.guest_address_2,
                     alternate_contact: req.body.alternate_contact
@@ -283,7 +290,7 @@ class GuestDeatils {
             }
         )
 
-        if(data){
+        if (data) {
             return res.status(200).json({
                 success: true,
                 code: 200,
@@ -293,7 +300,7 @@ class GuestDeatils {
     }
 
 
-   
+
 
 
 }

@@ -8,6 +8,7 @@ router.post('/signup', AdminModel.AdminSignUp);
 
 router.post('/validate-email',verifyJwt, AdminModel.VarifiedEmail);
 router.post('/resend-otp',verifyJwt, AdminModel.resendOTP);
+router.post("/resend_login_otp",AdminModel.resendOTPForLogin)
 
 router.post('/login', AdminModel.loginAdmin);
 router.post('/forgot-password', AdminModel.ForgotPassword);
@@ -31,4 +32,5 @@ router.get('/get-all-calls',verifyJwt, AdminModel.getAllCallList);
 
 router.get('/get-all-guest',verifyJwt, AdminModel.getAllGuestListAdmin);
 router.get("/getLeads",verifyJwt,AdminModel.Leads)
+router.post("/disposition",verifyJwt,AdminModel.addDisposition)
 export default router
