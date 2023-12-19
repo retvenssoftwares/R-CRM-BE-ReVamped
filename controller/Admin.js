@@ -117,9 +117,10 @@ class AdminModel {
 
       let payload = { _id, role, name, email, org_name, org_logo, profile_pic };
       if (findUser.role === "AGENT") {
+     
         payload.admin_id = findUser.created_by;
-
-        const data = await User.findById({ _id: new mongoose.Types.ObjectId(req.authData._id) })
+        
+        const data = await User.findOne({ email: email })
         const result = await User.findById({ _id: new mongoose.Types.ObjectId(data.created_by) })
 
         payload.org_logo = result.org_logo,
