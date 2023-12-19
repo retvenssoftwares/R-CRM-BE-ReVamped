@@ -437,6 +437,11 @@ console.log(averageDurationSeconds)
           {
             type: "Total Calls",
             attendedCalls: connectedCalls,
+            missedCalls:missedCalls,
+            AbandonedCalls:AbandonedCalls,
+            dispositionCounts:dispositionCounts,
+            ReservationCallDuration:formattedDuration,
+            avgReservationCallDuration:formattedAvgDuration
           },
         ]
 
