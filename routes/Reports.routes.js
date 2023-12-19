@@ -8,5 +8,6 @@ router.get('/getAvgCallDuration',verifyJwt,report.getCallDurationReport)
 router.get('/getCallOutCome',verifyJwt,report.getCallOutComeReport)
 router.get('/getCallResolution',verifyJwt,report.getFirstCallResolutionReport)
 router.get('/getAgentPerformance',verifyJwt,report.getAgentPerformance)
+router.get('/getCallHealthReport', verifyJwt, report.getCallHealthReport)
 
 export default router

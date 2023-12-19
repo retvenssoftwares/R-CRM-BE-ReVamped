@@ -656,7 +656,144 @@ console.log(averageDurationSeconds)
     })
   }
 
+  static async getCallHealthReport(req, res, next) {
+    try {
+      // Admin Id from AuthData
+      const admin_Id = req.authData?._id;
+      // console.log(admin_Id)
 
+      // Total Calls
+      const incommingCalls = await callsDetails?.countDocuments({
+        admin_id: new mongoose.Types.ObjectId(admin_Id),
+        type: "Inbound",
+      }) || 0;
+      const outgoingCalls = await callsDetails?.countDocuments({
+        admin_id: new mongoose.Types.ObjectId(admin_Id),
+        type: "Outbound",
+      }) || 0;
+
+      const disconnectedRecords = await callsDetails?.countDocuments({
+        admin_id: new mongoose.Types.ObjectId(admin_Id),
+        dial_status: "Disconnected"
+      }) || 0;
+
+      const totalRecords = incommingCalls + outgoingCalls + disconnectedRecords
+
+      // console.log(disconnectedRecords, totalRecords)
+      //missed call rate
+      const missedCallRate = (disconnectedRecords / totalRecords) * 100;
+      //Total call duration
+      const totalDuration = await callsDetails.aggregate([
+        {
+          $match: { admin_id: new mongoose.Types.ObjectId(admin_Id) }
+        },
+        {
+          $group: {
+            _id: null,
+            totalDurationInSeconds: {
+              $sum: {
+                $add: [
+                  { $multiply: [{ $toInt: { $arrayElemAt: [{ $split: ["$talktime", ":"] }, 0] } }, 3600] },
+                  { $multiply: [{ $toInt: { $arrayElemAt: [{ $split: ["$talktime", ":"] }, 1] } }, 60] },
+                  { $toInt: { $arrayElemAt: [{ $split: ["$talktime", ":"] }, 2] } }
+                ]
+              }
+            },
+            totalCount: { $sum: 1 }
+          }
+        }
+      ]);
+
+      // Extract total duration from aggregation result
+      const totalSeconds = totalDuration.length > 0 ? totalDuration[0].totalDurationInSeconds : 0;
+      // console.log(totalSeconds)
+      const totalCount = totalDuration.length > 0 ? totalDuration[0].totalCount : 0;
+      // console.log(totalCount)
+      // Convert total duration to HH:MM:SS format
+      const hours = Math.floor(totalSeconds / 3600);
+      const minutes = Math.floor((totalSeconds % 3600) / 60);
+      const seconds = totalSeconds % 60;
+      const formattedDuration = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+
+      // Calculate average call duration
+      const averageDurationSeconds = totalCount > 0 ? totalSeconds / totalCount : 0;
+
+      // Convert average duration to HH:MM:SS format
+      const avgHours = Math.floor(averageDurationSeconds / 3600);
+      const avgMinutes = Math.floor((averageDurationSeconds % 3600) / 60);
+      const avgSeconds = Math.floor(averageDurationSeconds % 60);
+      const formattedAvgDuration = `${avgHours.toString().padStart(2, '0')}:${avgMinutes.toString().padStart(2, '0')}:${avgSeconds.toString().padStart(2, '0')}`;
+
+
+      //Avg hold time
+      const averageHoldTime = await callsDetails.aggregate([
+        {
+          $match: { admin_id: new mongoose.Types.ObjectId(admin_Id) }
+        },
+        {
+          $group: {
+            _id: null,
+            totalHoldTime: {
+              $sum: {
+                $cond: {
+                  if: { $ne: ["$hold_time", ""] },
+                  then: {
+                    $add: [
+                      { $multiply: [{ $toInt: { $arrayElemAt: [{ $split: ["$hold_time", ":"] }, 0] } }, 3600] },
+                      { $multiply: [{ $toInt: { $arrayElemAt: [{ $split: ["$hold_time", ":"] }, 1] } }, 60] },
+                      { $toInt: { $arrayElemAt: [{ $split: ["$hold_time", ":"] }, 2] } }
+                    ]
+                  },
+                  else: 0
+                }
+              }
+            },
+            count: { $sum: 1 }
+          }
+        },
+        {
+          $project: {
+            _id: 0,
+            averageHoldTimeInSeconds: { $divide: ["$totalHoldTime", "$count"] }
+          }
+        },
+        {
+          $project: {
+            averageHoldTimeHHMMSS: {
+              $dateToString: {
+                date: { $toDate: { $multiply: ["$averageHoldTimeInSeconds", 1000] } },
+                format: "%H:%M:%S",
+                timezone: "UTC"
+              }
+            }
+          }
+        }
+      ])
+
+      return res.status(200).json({
+        status: true,
+        code: 200,
+        message: "Call Health Report",
+        data: [
+          {
+            totalCalls: incommingCalls + outgoingCalls,
+            totalCallsDuration: formattedDuration,
+            averageCallDuration: formattedAvgDuration,
+            missedCallRate: missedCallRate.toFixed(2),
+            averageHoldTime: averageHoldTime[0]?.averageHoldTimeHHMMSS || ""
+          },
+        ]
+
+      })
+
+    } catch (error) {
+      console.log(error)
+      return res.status(200).json({
+        status: false,
+        code: 500,
+      })
+    }
+  }
   
 }
 
