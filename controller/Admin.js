@@ -13,7 +13,8 @@ import CallDetail from "../model/callDetails.js";
 import mongoose from "mongoose";
 import dispositions from "../model/Disposition.js";
 import { formatTime } from "../utils/formattime.js";
-
+import departments from "../model/department.js"
+import designations from "../model/designation.js";
 dotenv.config({ path: "./.env" });
 
 let BASE_URL = process.env.BASE_URL;
@@ -117,9 +118,9 @@ class AdminModel {
 
       let payload = { _id, role, name, email, org_name, org_logo, profile_pic };
       if (findUser.role === "AGENT") {
-     
+
         payload.admin_id = findUser.created_by;
-        
+
         const data = await User.findOne({ email: email })
         const result = await User.findById({ _id: new mongoose.Types.ObjectId(data.created_by) })
 
@@ -155,6 +156,7 @@ class AdminModel {
         let password = req.body.password;
         let designation = req.body.designation;
         let department = req.body.department;
+        let profile_pic = req.body.profile_pic
 
         let findOldUser = await User.findOne({ email }).lean();
         let findAgent = await User.find({ role: "AGENT" }).lean();
@@ -182,6 +184,7 @@ class AdminModel {
             // agent_text: req.query.ext_name,
             designation: designation,
             department: department,
+            profile_pic : profile_pic,
             role: "AGENT",
           });
 
@@ -590,8 +593,8 @@ class AdminModel {
         data: {
           otp: otp,
         },
-    });
-    
+      });
+
 
       return res.status(200).json({
         status: true,
@@ -1710,7 +1713,6 @@ class AdminModel {
   }
 
   static async addDisposition(req, res, next) {
-
     try {
       const _id = req.authData._id
       if (req.authData.role === "ADMIN") {
@@ -1720,13 +1722,35 @@ class AdminModel {
           addedBy: _id
         })
 
-        console.log(disposition)
-
         return res.status(200).json({
           success: true,
           code: 200,
           data: disposition
         });
+      } else if (req.body.display_status === "0" && req.body.id) {
+        try{
+          const update = await dispositions.updateOne({ _id: new mongoose.Types.ObjectId(id) }, { $set: { display_status: "0" } })
+          if (update){
+            return res.status(200).json({
+              success: true,
+              code: 200,
+              message: "Details updated..."
+            });
+          } else {
+            return res.status(500).json({
+              success: false,
+              code: 500,
+              message: "Something wrong"
+            });
+          }
+        }catch(err){
+          return res.status(500).json({
+            success: false,
+            code: 500,
+            error: err.message
+          });
+        }
+     
       }
 
     } catch (err) {
@@ -1737,9 +1761,141 @@ class AdminModel {
       });
     }
 
+  }
 
+  static async addDepartment(req, res, next) {
+    try {
+      const _id = req.authData._id
+      if (req.authData.role === "ADMIN") {
+        const department = departments.create({
+          department_name: req.body.department_name,
+          short_code: req.body.short_code,
+          addedBy: _id
+        })
 
+        return res.status(200).json({
+          success: true,
+          code: 200,
+          data: department
+        });
+      } else if (req.body.display_status === "0" && req.body.id) {
+        try {
+          const update = await departments.updateOne({ _id: new mongoose.Types.ObjectId(id) }, { $set: { display_status: "0" } })
 
+          if (update){
+            return res.status(200).json({
+              success: true,
+              code: 200,
+              message: "Details updated..."
+            });
+          } else {
+            return res.status(500).json({
+              success: false,
+              code: 500,
+              message: "Something wrong"
+            });
+          }
+        }
+        catch (err) {
+          return res.status(500).json({
+            success: false,
+            code: 500,
+            error: err.message
+          });
+        }
+      
+      }
+
+    } catch (err) {
+      return res.status(500).json({
+        success: false,
+        code: 500,
+        error: err.message
+      });
+    }
+  }
+
+  static async addDesignation(req, res, next) {
+    try {
+      const _id = req.authData._id
+      if (req.authData.role === "ADMIN") {
+        const designation = designations.create({
+          designation: req.body.designation,
+          short_code: req.body.short_code,
+          addedBy: _id
+        })
+
+        return res.status(200).json({
+          success: true,
+          code: 200,
+          data: designation
+        });
+      } else if (req.body.display_status === "0" && req.body.id) {
+        try {
+          const update = await designations.updateOne({ _id: new mongoose.Types.ObjectId(id) }, { $set: { display_status: "0" } })
+
+          if (update){
+            return res.status(200).json({
+              success: true,
+              code: 200,
+              message: "Details updated..."
+            });
+          } else {
+            return res.status(500).json({
+              success: false,
+              code: 500,
+              message: "Something wrong"
+            });
+          }
+        }
+        catch (err) {
+          return res.status(500).json({
+            success: false,
+            code: 500,
+            error: err.message
+          });
+        }
+      
+      }
+
+    } catch (err) {
+      return res.status(500).json({
+        success: false,
+        code: 500,
+        error: err.message
+      });
+    }
+  }
+
+  static async getDepartMentDesignationDisposition(req,res,next){
+    const department = await departments.findOne({_id : new mongoose.Types.ObjectId(req.body.id)}).lean()
+    const all_department = await departments.find({}).lean()
+
+    const designation = await designations.findOne({_id : new mongoose.Types.ObjectId(req.body.id)}).lean()
+    const all_designation = await designations.find({}).lean() 
+
+    const disposition = await dispositions.findOne({_id : new mongoose.Types.ObjectId(req.body.id)}).lean()
+    const all_disposition = await dispositions.find({}).lean()
+
+    if(department){
+      return res.status(200).json({
+        success: true,
+        code: 200,
+        data: department,
+      });
+    }else if(designation){
+      return res.status(200).json({
+        success: true,
+        code: 200,
+        data: designation,
+      })
+    }else if(disposition){
+      return res.status(200).json({
+        success: true,
+        code: 200,
+        data: disposition,
+      })
+    } 
   }
 }
 
