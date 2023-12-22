@@ -33,4 +33,8 @@ router.get('/get-all-calls',verifyJwt, AdminModel.getAllCallList);
 router.get('/get-all-guest',verifyJwt, AdminModel.getAllGuestListAdmin);
 router.get("/getLeads",verifyJwt,AdminModel.Leads)
 router.post("/disposition",verifyJwt,AdminModel.addDisposition)
+router.post("/department",verifyJwt,AdminModel.addDepartment)
+router.post("/designation",verifyJwt,AdminModel.addDesignation)
+router.post("/addhotel",verifyJwt,AdminModel.addHotel)
+router.get("/departemetDesignationDisposition",AdminModel.getDepartMentDesignationDisposition)
 export default router

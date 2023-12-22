@@ -2,13 +2,12 @@ import mongoose from "mongoose";
 
 const { Schema, model } = mongoose;
 
-const dispositionSchema = mongoose.Schema(
+const hotelSchema = mongoose.Schema(
   {
-    name: {
+    hotel_name: {
       type: String,
       default:""
     },
-    
 
     short_code : {
       type:String,
@@ -29,5 +28,5 @@ const dispositionSchema = mongoose.Schema(
   { versionKey: false }
 );
 
-const Disposition = model("disposition", dispositionSchema);
-export default Disposition;
+const hotel = model("hotel", hotelSchema);
+export default hotel;

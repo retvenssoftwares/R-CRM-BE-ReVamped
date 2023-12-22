@@ -1,9 +1,9 @@
 import mongoose from "mongoose";
 import callsDetails from "../model/callDetails.js";
 import Disposition from "../model/Disposition.js"
-import formatTime from "../utils/formattime.js"
 import ErrorHandler from "../utils/errorHandler.js";
 import dispositionDetails from "../model/Disposition.js"
+import { formatTime } from "../utils/formattime.js"
 class Reports {
 
   // static async getCallVolumeReport(req, res, next) {
@@ -75,7 +75,6 @@ class Reports {
     try {
       // Admin Id from AuthData
       const admin_Id = req.authData?._id;
-  
       // Aggregate pipeline to group data by call_date and calculate counts
       const callVolumeData = await callsDetails.aggregate([
         {
@@ -121,14 +120,12 @@ class Reports {
           $sort: { date: -1 } // Sort results by date in ascending order
         }
       ]);
-  
       return res.status(200).json({
         status: true,
         code: 200,
         message: "Call volume data grouped by date",
         data: callVolumeData
       });
-  
     } catch (error) {
       return next(new ErrorHandler(error.message, 500));
     }
@@ -138,27 +135,18 @@ class Reports {
     try {
       // Admin Id from AuthData
       const admin_Id = req.authData?._id;
-      console.log(admin_Id)
-
-      // Total Calls
-      const incommingCalls = await callsDetails.countDocuments({
-        admin_id: new mongoose.Types.ObjectId(admin_Id),
-        type: "Inbound",
-      });
-      const outgoingCalls = await callsDetails.countDocuments({
-        admin_id: new mongoose.Types.ObjectId(admin_Id),
-        type: "Outbound",
-      });
-
 
       //Total call duration
       const totalDuration = await callsDetails.aggregate([
         {
-          $match: { admin_id: new mongoose.Types.ObjectId(admin_Id) }
+          $match: {
+            admin_id: new mongoose.Types.ObjectId(admin_Id),
+            call_date: { $exists: true }
+          }
         },
         {
           $group: {
-            _id: null,
+            _id: "$call_date",
             totalDurationInSeconds: {
               $sum: {
                 $add: [
@@ -168,179 +156,132 @@ class Reports {
                 ]
               }
             },
+            inboundCalls: { $sum: { $cond: [{ $eq: ["$type", "Inbound"] }, 1, 0] } },
+            inboundDuration: {
+              $sum: {
+                $cond: [
+                  { $eq: ["$type", "Inbound"] },
+                  {
+                    $add: [
+                      { $multiply: [{ $toInt: { $arrayElemAt: [{ $split: ["$talktime", ":"] }, 0] } }, 3600] },
+                      { $multiply: [{ $toInt: { $arrayElemAt: [{ $split: ["$talktime", ":"] }, 1] } }, 60] },
+                      { $toInt: { $arrayElemAt: [{ $split: ["$talktime", ":"] }, 2] } }
+                    ]
+                  },
+                  0
+                ]
+              }
+            },
+            outboundCalls: { $sum: { $cond: [{ $eq: ["$type", "Outbound"] }, 1, 0] } },
+            outboundDuration: {
+              $sum: {
+                $cond: [
+                  { $eq: ["$type", "Outbound"] },
+                  {
+                    $add: [
+                      { $multiply: [{ $toInt: { $arrayElemAt: [{ $split: ["$talktime", ":"] }, 0] } }, 3600] },
+                      { $multiply: [{ $toInt: { $arrayElemAt: [{ $split: ["$talktime", ":"] }, 1] } }, 60] },
+                      { $toInt: { $arrayElemAt: [{ $split: ["$talktime", ":"] }, 2] } }
+                    ]
+                  },
+                  0
+                ]
+              }
+            },
             minDuration: { $min: "$talktime" },
             maxDuration: { $max: "$talktime" },
             totalCount: { $sum: 1 },
           },
         },
-      ]);
-      console.log(totalDuration);
-/////////////////////////////////////////////////////////////
-      // Extract total duration from aggregation result
-      const totalSeconds = totalDuration.length > 0 ? totalDuration[0].totalDurationInSeconds : 0;
-      console.log(totalSeconds)
-      const totalCount = totalDuration.length > 0 ? totalDuration[0].totalCount : 0;
-      console.log(totalCount)
-      // Convert total duration to HH:MM:SS format
-      const hours = Math.floor(totalSeconds / 3600);
-      const minutes = Math.floor((totalSeconds % 3600) / 60);
-      const seconds = totalSeconds % 60;
-      const formattedDuration = `${hours.toString().padStart(2, "0")}:${minutes
-        .toString()
-        .padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
-console.log(formattedDuration)
-///////////////////////////////////////////////////////////////////////////
-      // Calculate average call duration
-      const averageDurationSeconds =
-        totalCount > 0 ? totalSeconds / totalCount : 0;
-        console.log("avg",averageDurationSeconds)
-
-      // Convert average duration to HH:MM:SS format
-      const avgHours = Math.floor(averageDurationSeconds / 3600);
-      const avgMinutes = Math.floor((averageDurationSeconds % 3600) / 60);
-      const avgSeconds = Math.floor(averageDurationSeconds % 60);
-      const formattedAvgDuration = `${avgHours
-        .toString()
-        .padStart(2, "0")}:${avgMinutes
-        .toString()
-        .padStart(2, "0")}:${avgSeconds.toString().padStart(2, "0")}`;
-        console.log("avg",formattedAvgDuration)
-  ////////////////////////////////////////////////////////////////////////////
-  // Extract min and max durations from aggregation result
-const minDuration =
-  totalDuration.length > 0 ? totalDuration[0].minDuration : "00:00:00";
-const maxDuration =
-  totalDuration.length > 0 ? totalDuration[0].maxDuration : "00:00:00";
-
-// Function to format duration in HH:MM:SS format
-const formatDuration = (duration) => {
-  const [hours, minutes, seconds] = duration.split(":").map(Number);
-  return `${hours.toString().padStart(2, "0")}:${minutes
-    .toString()
-    .padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
-};
-
-// Format min and max durations
-const formattedMinDuration = formatDuration(minDuration);
-const formattedMaxDuration = formatDuration(maxDuration);
-
-   ///////////////////////////////////////////////////////////////////////////////     
-      // Total call duration for Inbound calls
-      const inboundTotalDuration = await callsDetails.aggregate([
         {
-          $match: {
-            admin_id: new mongoose.Types.ObjectId(admin_Id),
-            type: "Inbound",
-          },
+          $project: {
+            _id: 0, // Exclude _id field
+            date: "$_id",
+            totalDurationInSeconds: 1,
+            totalCount: 1,
+            inboundDuration: 1,
+            inboundCalls: 1,
+            outboundDuration: 1,
+            outboundCalls: 1,
+            minDuration: 1,
+            maxDuration: 1
+          }
         },
         {
-          $group: {
-            _id: null,
-            totalDurationInSeconds: {
-              $sum: {
-                $add: [
-                  { $multiply: [{ $toInt: { $arrayElemAt: [{ $split: ["$talktime", ":"] }, 0] } }, 3600] },
-                  { $multiply: [{ $toInt: { $arrayElemAt: [{ $split: ["$talktime", ":"] }, 1] } }, 60] },
-                  { $toInt: { $arrayElemAt: [{ $split: ["$talktime", ":"] }, 2] } },
-                ],
-              },
-            },
-            totalCount: { $sum: 1 },
-          },
-        },
+          $sort: { date: -1 },
+        }
       ]);
 
-      // Extract total duration from aggregation result for inbound calls
-      const inboundTotalSeconds = inboundTotalDuration.length > 0 ? inboundTotalDuration[0].totalDurationInSeconds : 0;
-      const inboundTotalCount = inboundTotalDuration.length > 0 ? inboundTotalDuration[0].totalCount : 0;
 
-      // Convert total duration to HH:MM:SS format for inbound calls
-      const inboundHours = Math.floor(inboundTotalSeconds / 3600);
-      const inboundMinutes = Math.floor((inboundTotalSeconds % 3600) / 60);
-      const inboundSeconds = inboundTotalSeconds % 60;
+      const data = []
+      totalDuration.map((item) => {
+        const totalSeconds = item?.totalDurationInSeconds;
+        const totalCount = item?.totalCount;
+        const inboundTotalCount = item?.inboundCalls;
+        const inboundTotalSeconds = item?.inboundDuration;
+        const outboundTotalCount = item?.outboundCalls;
+        const outboundsTotalSeconds = item?.outboundDuration;
+        // Convert total duration to HH:MM:SS format
 
-      const formattedInboundDuration = `${inboundHours.toString().padStart(2, '0')}:${inboundMinutes.toString().padStart(2, '0')}:${inboundSeconds.toString().padStart(2, '0')}`;
-
-      // Calculate average call duration for inbound calls
-      const inboundAverageDurationSeconds = inboundTotalCount > 0 ? inboundTotalSeconds / inboundTotalCount : 0;
-
-      // Convert average duration to HH:MM:SS format for inbound calls
-      const inboundAvgHours = Math.floor(inboundAverageDurationSeconds / 3600);
-      const inboundAvgMinutes = Math.floor((inboundAverageDurationSeconds % 3600) / 60);
-      const inboundAvgSeconds = Math.floor(inboundAverageDurationSeconds % 60);
-
-      const formattedInboundAvgDuration = `${inboundAvgHours.toString().padStart(2, '0')}:${inboundAvgMinutes.toString().padStart(2, '0')}:${inboundAvgSeconds.toString().padStart(2, '0')}`;
+        const Totaltime = formatTime(totalSeconds)
+        const inboundTotalTime = formatTime(inboundTotalSeconds)
+        const outboundTotalTime = formatTime(outboundsTotalSeconds)
 
 
+        const averageDurationSeconds = totalCount > 0 ? totalSeconds / totalCount : 0;
+        const inboundAverageDurationSeconds = inboundTotalCount > 0 ? inboundTotalSeconds / inboundTotalCount : 0;
+        const outboundAverageDurationSeconds = outboundTotalCount > 0 ? outboundsTotalSeconds / outboundTotalCount : 0;
 
-      // Total call duration for Outbound calls
-      const outboundTotalDuration = await callsDetails.aggregate([
-        {
-          $match: {
-            admin_id: new mongoose.Types.ObjectId(admin_Id),
-            type: "Outbound",
-          },
-        },
-        {
-          $group: {
-            _id: null,
-            totalDurationInSeconds: {
-              $sum: {
-                $add: [
-                  { $multiply: [{ $toInt: { $arrayElemAt: [{ $split: ["$talktime", ":"] }, 0] } }, 3600] },
-                  { $multiply: [{ $toInt: { $arrayElemAt: [{ $split: ["$talktime", ":"] }, 1] } }, 60] },
-                  { $toInt: { $arrayElemAt: [{ $split: ["$talktime", ":"] }, 2] } },
-                ],
-              },
-            },
-            totalCount: { $sum: 1 },
-          },
-        },
-      ]);
+        const avgTime = formatTime(averageDurationSeconds)
+        const avginboundTime = formatTime(inboundAverageDurationSeconds)
+        const avgoutboundTime = formatTime(outboundAverageDurationSeconds)
 
-      // Extract total duration from aggregation result for inbound calls
-      const outboundTotalSeconds = outboundTotalDuration.length > 0 ? outboundTotalDuration[0].totalDurationInSeconds : 0;
-      const outboundTotalCount = outboundTotalDuration.length > 0 ? outboundTotalDuration[0].totalCount : 0;
 
-      // Convert total duration to HH:MM:SS format for inbound calls
-      const outboundHours = Math.floor(outboundTotalSeconds / 3600);
-      const outboundMinutes = Math.floor((outboundTotalSeconds % 3600) / 60);
-      const outboundSeconds = outboundTotalSeconds % 60;
+        // Extract min and max durations from aggregation result
+        const minDuration =
+          totalDuration.length > 0 ? totalDuration[0].minDuration : "00:00:00";
+        const maxDuration =
+          totalDuration.length > 0 ? totalDuration[0].maxDuration : "00:00:00";
 
-      const formattedOutboundDuration = `${outboundHours.toString().padStart(2, '0')}:${outboundMinutes.toString().padStart(2, '0')}:${outboundSeconds.toString().padStart(2, '0')}`;
+        // Function to format duration in HH:MM:SS format
+        const formatDuration = (duration) => {
+          const [hours, minutes, seconds] = duration.split(":").map(Number);
+          return `${hours.toString().padStart(2, "0")}:${minutes
+            .toString()
+            .padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
+        };
 
-      // Calculate average call duration for inbound calls
-      const outboundAverageDurationSeconds = outboundTotalCount > 0 ? outboundTotalSeconds / outboundTotalCount : 0;
+        // Format min and max durations
+        const formattedMinDuration = formatDuration(minDuration);
+        const formattedMaxDuration = formatDuration(maxDuration);
 
-      // Convert average duration to HH:MM:SS format for inbound calls
-      const outboundAvgHours = Math.floor(outboundAverageDurationSeconds / 3600);
-      const outboundAvgMinutes = Math.floor((outboundAverageDurationSeconds % 3600) / 60);
-      const outboundAvgSeconds = Math.floor(outboundAverageDurationSeconds % 60);
+        const details = [{
+          totalCalls: totalCount,
+          date: item.date,
+          totalDuration: Totaltime,
+          averageDuration: avgTime,
+          inboundsCalls: inboundTotalCount,
+          outboundsCalls: outboundTotalCount,
+          inboundTotalDuration: inboundTotalTime,
+          inboundAverageDuration: avginboundTime,
+          outboundTotalDuration: outboundTotalTime,
+          outboundAverageDuration: avgoutboundTime,
+          minDuration: formattedMinDuration,
+          maxDuration: formattedMaxDuration
+        }]
 
-      const formattedOutboundAvgDuration = `${outboundAvgHours.toString().padStart(2, '0')}:${outboundAvgMinutes.toString().padStart(2, '0')}:${outboundAvgSeconds.toString().padStart(2, '0')}`;
-
+        data.push(details)
+      })
 
       // Respond with the total call duration for all agents of the particular admin
       return res.status(200).json({
         status: true,
         code: 200,
         message: "TODO",
-        data: [
-          {
-            totalCalls: incommingCalls + outgoingCalls,
-            totalDuration: formattedDuration,
-            averageDuration: formattedAvgDuration,
-            inboundTotalDuration: formattedInboundDuration,
-            inboundAverageDuration: formattedInboundAvgDuration,
-            outboundTotalDuration: formattedOutboundDuration,
-            outboundAverageDuration: formattedOutboundAvgDuration,
-            minDuration:formattedMinDuration,
-            maxDuration:formattedMaxDuration
-          },
-        ],
+        data: [].concat(...data)
       });
     } catch (error) {
-      console.log(error)
+
       return next(new ErrorHandler(error.message, 500));
     }
   }
@@ -351,44 +292,28 @@ const formattedMaxDuration = formatDuration(maxDuration);
     try {
       // Admin Id from AuthData
       const admin_Id = req.authData?._id;
-
-      // Counting attended calls when type is "Connected"
-      const connectedCalls = await callsDetails.countDocuments({
-        admin_id: new mongoose.Types.ObjectId(admin_Id),
-        type: "Inbound",
-        dial_status: "Connected",
-      });
-
-      // Counting missed calls when type is "Outbound"
-      const missedCalls = await callsDetails.countDocuments({
-        admin_id: new mongoose.Types.ObjectId(admin_Id),
-        dial_status: "Disconnected",
-      });
-
-      // Counting abandoned calls when type is "Outbound"
-      const AbandonedCalls = await callsDetails.countDocuments({
-        admin_id: new mongoose.Types.ObjectId(admin_Id),
-        dial_status: "Rejected",
-      });
-
       // Counting dispositions
       const dispositionCounts = await callsDetails.aggregate([
         {
           $match: {
             admin_id: new mongoose.Types.ObjectId(admin_Id),
+            call_date: { $exists: true }, // Ensure call_date exists
             disposition: { $exists: true, $ne: null }, // Filter out null or non-existent dispositions
           },
         },
         {
           $group: {
-            _id: "$disposition", // Group by disposition
+            _id: {
+              disposition: "$disposition",
+              date: "$call_date" // Replace with your actual date field
+            }, // Group by disposition
             count: { $sum: 1 }, // Count occurrences of each disposition
           },
         },
         {
           $lookup: {
             from: "dispositions", // Assuming dispositions are stored in a collection named "dispositions"
-            localField: "_id",
+            localField: "_id.disposition",
             foreignField: "_id",
             as: "dispositionData",
           },
@@ -396,38 +321,60 @@ const formattedMaxDuration = formatDuration(maxDuration);
         {
           $project: {
             _id: 0, // Exclude _id from the output
+            date: "$_id.date",
             disposition: { $arrayElemAt: ["$dispositionData.name", 0] }, // Get the name of the disposition from the lookup
             count: 1, // Include the count in the output
           },
         },
+        {
+          $sort: { date: -1 }
+        }
       ]);
 
       //Total duration for reservation call
       const totalDuration = await callsDetails.aggregate([
         {
-          $match: { admin_id: new mongoose.Types.ObjectId(admin_Id) },
-        
-         
+          $match: {
+            admin_id: new mongoose.Types.ObjectId(admin_Id),
+            call_date: { $exists: true } // Ensure call_date exists
+          }
         },
+
         {
           $lookup: {
-              from: "dispositions",
-              localField: "disposition",
-              foreignField: "_id",
-              as: "dispositions"
+            from: "dispositions",
+            localField: "disposition",
+            foreignField: "_id",
+            as: "dispositions"
           }
-      },
-      {
-        $unwind: "$dispositions"
-    },
-    {
-        $match: {
+        },
+        {
+          $unwind: "$dispositions"
+        },
+        {
+          $match: {
             "dispositions.name": "Reservation",
-        }
-    },
+          }
+        },
         {
           $group: {
-            _id: null,
+            _id: "$call_date",
+            connectedCalls: {
+              $sum: {
+                $cond: [
+                  {
+                    $and: [
+                      { $eq: ["$type", "Inbound"] },
+                      { $eq: ["$dial_status", "Connected"] }
+                    ]
+                  },
+                  1,
+                  0
+                ]
+              }
+            },
+            missedCalls: { $sum: { $cond: [{ $eq: ["$dial_status", "Disconnected"] }, 1, 0] } },
+            AbandonedCalls: { $sum: { $cond: [{ $eq: ["$dial_status", "Rejected"] }, 1, 0] } },
             totalDurationInSeconds: {
               $sum: {
                 $add: [
@@ -462,52 +409,70 @@ const formattedMaxDuration = formatDuration(maxDuration);
             totalCount: { $sum: 1 },
           },
         },
+        {
+          $project: {
+            _id: 0, // Exclude _id field
+            date: "$_id",
+            totalDurationInSeconds: 1,
+            missedCalls: 1,
+            AbandonedCalls: 1,
+            connectedCalls: 1,
+          }
+        },
+        {
+          $sort: { date: -1 },
+        }
       ]);
-      // Extract total duration from aggregation result
-      const totalSeconds =
-        totalDuration.length > 0 ? totalDuration[0].totalDurationInSeconds : 0;
-      console.log(totalSeconds);
-      const totalCount =
-        totalDuration.length > 0 ? totalDuration[0].totalCount : 0;
-      console.log(totalCount);
-      // Convert total duration to HH:MM:SS format
-      const hours = Math.floor(totalSeconds / 3600);
-      const minutes = Math.floor((totalSeconds % 3600) / 60);
-      const seconds = totalSeconds % 60;
-      const formattedDuration = `${hours.toString().padStart(2, "0")}:${minutes
-        .toString()
-        .padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
 
-           // Calculate average call duration
-      const averageDurationSeconds =
-      totalCount > 0 ? totalSeconds / totalCount : 0;
-console.log(averageDurationSeconds)
-    // Convert average duration to HH:MM:SS format
-    const avgHours = Math.floor(averageDurationSeconds / 3600);
-    const avgMinutes = Math.floor((averageDurationSeconds % 3600) / 60);
-    const avgSeconds = Math.floor(averageDurationSeconds % 60);
-    const formattedAvgDuration = `${avgHours
-      .toString()
-      .padStart(2, "0")}:${avgMinutes
-      .toString()
-      .padStart(2, "0")}:${avgSeconds.toString().padStart(2, "0")}`;
+      const data = []
+      totalDuration.map((item) => {
+        const totalSeconds = item?.totalDurationInSeconds;
+        const totalCount = item?.totalCount;
+        const formattedDuration = formatTime(totalSeconds)
+
+        const averageDurationSeconds = totalCount > 0 ? totalSeconds / totalCount : 0;
+        const formattedAvgDuration = formatTime(averageDurationSeconds)
+
+
+        const details = [{
+          date: item.date,
+          ReservationCallDuration: formattedDuration,
+          avgReservationCallDuration: formattedAvgDuration
+        }]
+
+        data.push(details)
+      })
+
+      const a = [].concat(...data)
+      const original = []
+      a.map((item) => {
+        const f = dispositionCounts
+        f.map((item2) => {
+          if (item2.date === item.date) {
+            const data = [{
+              ReservationCallDuration: item?.ReservationCallDuration,
+              date: item?.date,
+              avgReservationCallDuration: item?.avgReservationCallDuration,
+              count: item2?.count,
+              disposition: item2?.disposition
+            }]
+            original.push(data)
+          } else {
+            const data = [{
+              ReservationCallDuration: item?.ReservationCallDuration,
+              date: item?.date,
+              avgReservationCallDuration: item?.avgReservationCallDuration,
+            }]
+            original.push(data)
+          }
+        })
+      })
 
       return res.status(200).json({
         status: true,
         code: 200,
         message: "TODO",
-        data: [
-          {
-            type: "Total Calls",
-            attendedCalls: connectedCalls,
-            missedCalls:missedCalls,
-            AbandonedCalls:AbandonedCalls,
-            dispositionCounts:dispositionCounts,
-            ReservationCallDuration:formattedDuration,
-            avgReservationCallDuration:formattedAvgDuration
-          },
-        ]
-
+        data: [].concat(...original),
       })
 
     } catch (error) {
@@ -516,104 +481,159 @@ console.log(averageDurationSeconds)
     }
   }
 
-  ///////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////////////
 
-  static async getFirstCallResolutionReport (req,res,next){
+  static async getFirstCallResolutionReport(req, res, next) {
     try {
       // Admin Id from AuthData
       const admin_Id = req.authData?._id;
 
       // Total Calls
-      const incommingCalls = await callsDetails.countDocuments({
-        admin_id: new mongoose.Types.ObjectId(admin_Id),
-        type: "Inbound",
-      });
-      const outgoingCalls = await callsDetails.countDocuments({
-        admin_id: new mongoose.Types.ObjectId(admin_Id),
-        type: "Outbound",
-      });
-
-      // Counting attended calls when type is "Connected"
-      const connectedCalls = await callsDetails.countDocuments({
-        admin_id: new mongoose.Types.ObjectId(admin_Id),
-        type: "Inbound",
-        dial_status: "Connected",
-      });
-
-     
-      // Find the first inbound call made by each agent with different guest IDs
-    const firstInboundCallsByAgent = await callsDetails.aggregate([
-      {
-        $match: {
-          admin_id: new mongoose.Types.ObjectId(admin_Id),
-          type: "Inbound",
-          guest_id: { $exists: true } // Assuming there's a field for guest ID
-        }
-      },
-      {
-        $group: {
-          _id: { agent_id: "$agent_id", guest_id: "$guest_id" }, // Grouping by agent_id and guest_id
-          firstCall: { $min: "$call_date" }, // Finding the minimum call date (first call)
-          records: { $push: "$$ROOT" } // Pushing all records for later retrieval
-        }
-      },
-      {
-        $group: {
-          _id: "$_id.guest_id", // Grouping by guest_id only
-          firstCalls: {
-            $push: {
-              firstCall: "$firstCall",
-              records: "$records"
+      const aggregationPipeline = [
+        {
+          $match: {
+            admin_id: new mongoose.Types.ObjectId(admin_Id),
+            call_date: { $exists: true } // Ensure call_date exists
+          }
+        },
+        {
+          $group: {
+            _id: "$call_date",
+            count: { $sum: 1 },
+            inboundCalls: { $sum: { $cond: [{ $eq: ["$type", "Inbound"] }, 1, 0] } },
+            outboundCalls: { $sum: { $cond: [{ $eq: ["$type", "Outbound"] }, 1, 0] } },
+            connectedCalls: {
+              $sum: {
+                $cond: [
+                  {
+                    $and: [
+                      { $eq: ["$type", "Inbound"] },
+                      { $eq: ["$dial_status", "Connected"] }
+                    ]
+                  },
+                  1,
+                  0
+                ]
+              }
             }
+          },
+
+        },
+
+        {
+          $project: {
+            _id: 0,
+            date: "$_id",
+            inboundCalls: 1,
+            outboundCalls: 1,
+            connectedCalls: 1,
           }
         }
-      },
-      {
-        $lookup: {
-          from: "dispositions", // Assuming the Disposition collection name
-          localField: "firstCalls.records.disposition",
-          foreignField: "_id",
-          as: "matched_dispositions",
+      ];
+
+      const results = await callsDetails.aggregate(aggregationPipeline);
+
+      const data = []
+      results.map((item) => {
+        const inbound = item?.inboundCalls;
+        const outbound = item?.outboundCalls;
+        const connected = item?.connectedCalls
+
+        const details = [{
+          inbound,
+          date: item.date,
+          outbound,
+          connected,
+        }]
+
+        data.push(details)
+
+      })
+
+      // Extract counts for each type
+
+
+      // Find the first inbound call made by each agent with different guest IDs
+      const firstInboundCallsByAgent = await callsDetails.aggregate([
+        {
+          $match: {
+            admin_id: new mongoose.Types.ObjectId(admin_Id),
+            type: "Inbound",
+            call_date: { $exists: true },
+            guest_id: { $exists: true }
+          }
         },
-      },
-      {
-        $unwind: "$matched_dispositions",
-      },
-      {
-        $match: {
-          "matched_dispositions.name": "Reservation",
+        {
+          $group: {
+            _id: { agent_id: "$agent_id", guest_id: "$guest_id", date: "$call_date" },
+            firstCall: { $min: "$call_date" },
+            records: { $push: "$$ROOT" }
+          }
         },
-      },
-      {
-        $group: {
-          _id: null,
-          FCR: { $sum: 1 },
+        {
+          $lookup: {
+            from: "dispositions",
+            localField: "records.disposition",
+            foreignField: "_id",
+            as: "matched_dispositions"
+          }
         },
-      },
-      {
-        $project: {
-          _id: 0,
-          FCR: 1,
+        {
+          $unwind: "$matched_dispositions"
         },
-      },
-      
-      
-      
-    ]);
-    console.log(firstInboundCallsByAgent)
-    
+        {
+          $match: {
+            "matched_dispositions.name": "Reservation"
+          }
+        },
+        {
+          $group: {
+            _id: { date: "$_id.date" },
+            FCR: { $sum: 1 }
+          }
+        },
+        {
+          $project: {
+            _id: 0,
+            date: "$_id.date",
+            FCR: 1
+          }
+        }
+      ]);
+
+      // The result will contain an array of objects, each representing FCR for a specific dat
+
+      const a = [].concat(...data)
+      const original = []
+      a.map((item) => {
+        const f = firstInboundCallsByAgent
+        f.map((item2) => {
+          if (item2.date === item.date) {
+            const data = [{
+              inbound: item?.inbound,
+              date: item?.date,
+              outbound: item?.outbound,
+              connected: item?.connected,
+              FCR: item2?.FCR
+            }]
+            original.push(data)
+          } else {
+            const data = [{
+              inbound: item?.inbound,
+              date: item?.date,
+              outbound: item?.outbound,
+              connected: item?.connected,
+            }]
+            original.push(data)
+          }
+        })
+      })
+
       return res.status(200).json({
         status: true,
         code: 200,
         message: "TODO",
-        data: [
-          {
-            type: "Total Calls",
-            totalCalls: incommingCalls + outgoingCalls,
-            attendedCalls: connectedCalls,
-            FCRCount:firstInboundCallsByAgent[0].FCR || ''
-          },
-        ],
+        data: [].concat(...original),
       });
     } catch (error) {
       return next(new ErrorHandler(error.message, 500));
@@ -630,6 +650,7 @@ console.log(averageDurationSeconds)
       {
         $match: {
           agent_id: new mongoose.Types.ObjectId(req.authData._id),
+          call_date: { $exists: true },
         },
       },
 
@@ -648,7 +669,7 @@ console.log(averageDurationSeconds)
 
       {
         $group: {
-          _id: null,
+          _id: "$call_date",
           totalDurationInSeconds: {
             $sum: {
               $add: [
@@ -658,6 +679,10 @@ console.log(averageDurationSeconds)
               ],
             },
           },
+          inboundCalls: { $sum: { $cond: [{ $eq: ["$type", "Inbound"] }, 1, 0] } },
+          outboundCalls: { $sum: { $cond: [{ $eq: ["$type", "Outbound"] }, 1, 0] } },
+          missedCalls: { $sum: { $cond: [{ $eq: ["$dial_status", "Disconnected"] }, 1, 0] } },
+          AbandonedCalls: { $sum: { $cond: [{ $eq: ["$dial_status", "Rejected"] }, 1, 0] } },
           totalCount: { $sum: 1 },
           agent_id: { $first: "$agent_info._id" }, // Save the agent_id for later use
           agent_name: { $first: "$agent_info.name" },
@@ -667,55 +692,115 @@ console.log(averageDurationSeconds)
       {
         $project: {
           _id: 0, // Exclude the _id field from the output
+          date: "$_id",
           agent_id: 1, // Include the agent_id field in the output
           agent_name: 1, // Include the agent_name field in the output
           totalDurationInSeconds: 1,
+          inboundCalls: 1,
+          AbandonedCall: 1,
+          missedCalls: 1,
+          outboundCalls: 1,
           totalCount: 1,
         }
       },
     ]);
 
+    const data = []
 
-    // reservation call count
-    const [incomingCallsCount, reservationCount] = await Promise.all([
-      callsDetails.countDocuments({ agent_id: new mongoose.Types.ObjectId(req.authData._id) }),
-      dispositionDetails.countDocuments({ name: "Reservation" }),
-    ]);
+    agentPerformance.map((item) => {
+      const details = [{
+        date: item?.date,
+        agent_id: item?.agent_id,
+        agent_name: item?.agent_name,
+        formattedOutboundDuration: formatTime(item?.totalDurationInSeconds),
+        inboundCalls: item?.inboundCalls,
+        AbandonedCalls: item?.AbandonedCall,
+        missedCalls: item?.missedCalls,
+        outboundCalls: item?.outboundCalls,
+        totalCount: item?.totalCount
+      }]
 
-    // abandonedCall count
-    const AbandonedCall = await callsDetails.countDocuments({
-       agent_id: new mongoose.Types.ObjectId(req.authData._id) ,
-       dial_status : "Rejected"
+      data.push(details)
     })
 
-    //missed call count
 
-    const MissedCall = await callsDetails.countDocuments({
-      agent_id: new mongoose.Types.ObjectId(req.authData._id) ,
-      dial_status : "Disconnected"
-   })
+    // reservation call count
+    const reservationCount = await callsDetails.aggregate([
+      {
+        $match: {
+          agent_id: new mongoose.Types.ObjectId(req.authData._id),
+          call_date: { $exists: true, $ne: null }
+          // Add any other conditions if needed
+        }
+      },
+      {
+        $lookup: {
+          from: "dispositions",
+          localField: "disposition",
+          foreignField: "_id",
+          as: "dispositions"
+        }
+      },
+      {
+        $unwind: "$dispositions"
+      },
+      {
+        $match: {
+          "dispositions.name": "Reservation",
+        }
+      },
+      {
+        $group: {
+          _id: "$call_date",
+          count: { $sum: 1 }
+        }
+      },
+      {
+        $project: {
+          _id: 0,
+          date: "$_id",
+          count: 1
+        }
+      }
+    ]);
 
+    const a = [].concat(...data)
+    const original = []
+    a.map((item) => {
+      const f = reservationCount
+      f.map((item2) => {
+        if (item2.date === item.date) {
+          const data = [{
+            formattedOutboundDuration: item?.formattedOutboundDuration,
+            date: item?.date,
+            agent_id: item?.agent_id,
+            agent_name: item?.agent_name,
+            inboundCalls: item?.inboundCalls,
+            missedCalls: item2?.missedCalls,
+            outboundCalls: item2?.outboundCalls,
+            totalCount: item?.totalCount,
+            count: item2?.count
+          }]
+          original.push(data)
+        } else {
+          const data = [{
+            date: item?.date,
+            agent_id: item?.agent_id,
+            agent_name: item?.agent_name,
+            inboundCalls: item?.inboundCalls,
+            missedCalls: item2?.missedCalls,
+            outboundCalls: item2?.outboundCalls,
+            totalCount: item?.totalCount,
+          }]
+          original.push(data)
+        }
+      })
+    })
 
-    const outboundHours = Math.floor(agentPerformance[0].totalDurationInSeconds / 3600);
-    const outboundMinutes = Math.floor((agentPerformance[0].totalDurationInSeconds % 3600) / 60);
-    const outboundSeconds = agentPerformance[0].totalDurationInSeconds % 60;
-
-    const formattedOutboundDuration = `${outboundHours.toString().padStart(2, '0')}:${outboundMinutes.toString().padStart(2, '0')}:${outboundSeconds.toString().padStart(2, '0')}`;
-
-    //console.log(incomingCallsCount-AbandonedCall-reservationCount)
     return res.status(200).json({
       status: true,
       code: 200,
-      data: {
-        agent_id: agentPerformance[0].agent_id,
-        agent_name: agentPerformance[0].agent_name,
-        formattedInboundDuration: formattedOutboundDuration,
-        totalCount: agentPerformance[0].totalCount,
-        reservationCount: reservationCount,
-        AbandonedCall : AbandonedCall,
-        MissedCall : MissedCall
-        // Include other fields from agentPerformance as needed
-      }
+      data: [].concat(...original),
     })
   }
 
@@ -857,7 +942,7 @@ console.log(averageDurationSeconds)
       })
     }
   }
-  
+
 }
 
 export default Reports
