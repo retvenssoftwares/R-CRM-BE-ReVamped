@@ -1383,6 +1383,7 @@ class AdminModel {
         {
           $match: {
             created_by: new mongoose.Types.ObjectId(req.authData._id),
+            displayStatus : "1"
           },
         },
       ];
@@ -1408,6 +1409,7 @@ class AdminModel {
         message: "Details Fetched Successfully....",
         data: data.reverse(),
       });
+
     } catch (error) {
       return res.status(500).json({
         status: false,
@@ -1416,6 +1418,8 @@ class AdminModel {
       });
     }
   }
+
+
 
   static async getAllCallList(req, res, next) {
     try {

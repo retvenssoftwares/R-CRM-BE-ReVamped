@@ -146,7 +146,7 @@ class Reports {
           }
         },
         {
-          $sort : {date : -1},
+          $sort: { date: -1 },
         }
       ]);
 
@@ -165,7 +165,7 @@ class Reports {
         const inboundTotalTime = formatTime(inboundTotalSeconds)
         const outboundTotalTime = formatTime(outboundsTotalSeconds)
 
-        
+
         const averageDurationSeconds = totalCount > 0 ? totalSeconds / totalCount : 0;
         const inboundAverageDurationSeconds = inboundTotalCount > 0 ? inboundTotalSeconds / inboundTotalCount : 0;
         const outboundAverageDurationSeconds = outboundTotalCount > 0 ? outboundsTotalSeconds / outboundTotalCount : 0;
@@ -194,18 +194,18 @@ class Reports {
         const formattedMaxDuration = formatDuration(maxDuration);
 
         const details = [{
-            totalCalls: totalCount,
-            date : item.date,
-            totalDuration: Totaltime,
-            averageDuration: avgTime,
-            inboundsCalls : inboundTotalCount,
-            outboundsCalls : outboundTotalCount,
-            inboundTotalDuration: inboundTotalTime,
-            inboundAverageDuration: avginboundTime,
-            outboundTotalDuration: outboundTotalTime,
-            outboundAverageDuration: avgoutboundTime,
-            minDuration: formattedMinDuration,
-            maxDuration: formattedMaxDuration
+          totalCalls: totalCount,
+          date: item.date,
+          totalDuration: Totaltime,
+          averageDuration: avgTime,
+          inboundsCalls: inboundTotalCount,
+          outboundsCalls: outboundTotalCount,
+          inboundTotalDuration: inboundTotalTime,
+          inboundAverageDuration: avginboundTime,
+          outboundTotalDuration: outboundTotalTime,
+          outboundAverageDuration: avgoutboundTime,
+          minDuration: formattedMinDuration,
+          maxDuration: formattedMaxDuration
         }]
 
         data.push(details)
@@ -216,10 +216,10 @@ class Reports {
         status: true,
         code: 200,
         message: "TODO",
-        data : data
+        data: [].concat(...data)
       });
     } catch (error) {
-      console.log(error)
+
       return next(new ErrorHandler(error.message, 500));
     }
   }
@@ -230,44 +230,28 @@ class Reports {
     try {
       // Admin Id from AuthData
       const admin_Id = req.authData?._id;
-
-      // Counting attended calls when type is "Connected"
-      const connectedCalls = await callsDetails.countDocuments({
-        admin_id: new mongoose.Types.ObjectId(admin_Id),
-        type: "Inbound",
-        dial_status: "Connected",
-      });
-
-      // Counting missed calls when type is "Outbound"
-      const missedCalls = await callsDetails.countDocuments({
-        admin_id: new mongoose.Types.ObjectId(admin_Id),
-        dial_status: "Disconnected",
-      });
-
-      // Counting abandoned calls when type is "Outbound"
-      const AbandonedCalls = await callsDetails.countDocuments({
-        admin_id: new mongoose.Types.ObjectId(admin_Id),
-        dial_status: "Rejected",
-      });
-
       // Counting dispositions
       const dispositionCounts = await callsDetails.aggregate([
         {
           $match: {
             admin_id: new mongoose.Types.ObjectId(admin_Id),
+            call_date: { $exists: true }, // Ensure call_date exists
             disposition: { $exists: true, $ne: null }, // Filter out null or non-existent dispositions
           },
         },
         {
           $group: {
-            _id: "$disposition", // Group by disposition
+            _id: {
+              disposition: "$disposition",
+              date: "$call_date" // Replace with your actual date field
+            }, // Group by disposition
             count: { $sum: 1 }, // Count occurrences of each disposition
           },
         },
         {
           $lookup: {
             from: "dispositions", // Assuming dispositions are stored in a collection named "dispositions"
-            localField: "_id",
+            localField: "_id.disposition",
             foreignField: "_id",
             as: "dispositionData",
           },
@@ -275,17 +259,25 @@ class Reports {
         {
           $project: {
             _id: 0, // Exclude _id from the output
+            date: "$_id.date",
             disposition: { $arrayElemAt: ["$dispositionData.name", 0] }, // Get the name of the disposition from the lookup
             count: 1, // Include the count in the output
           },
         },
+        {
+          $sort: { date: -1 }
+        }
       ]);
 
       //Total duration for reservation call
       const totalDuration = await callsDetails.aggregate([
         {
-          $match: { admin_id: new mongoose.Types.ObjectId(admin_Id) },
+          $match: {
+            admin_id: new mongoose.Types.ObjectId(admin_Id),
+            call_date: { $exists: true } // Ensure call_date exists
+          }
         },
+
         {
           $lookup: {
             from: "dispositions",
@@ -304,7 +296,23 @@ class Reports {
         },
         {
           $group: {
-            _id: null,
+            _id: "$call_date",
+            connectedCalls: {
+              $sum: {
+                $cond: [
+                  {
+                    $and: [
+                      { $eq: ["$type", "Inbound"] },
+                      { $eq: ["$dial_status", "Connected"] }
+                    ]
+                  },
+                  1,
+                  0
+                ]
+              }
+            },
+            missedCalls: { $sum: { $cond: [{ $eq: ["$dial_status", "Disconnected"] }, 1, 0] } },
+            AbandonedCalls: { $sum: { $cond: [{ $eq: ["$dial_status", "Rejected"] }, 1, 0] } },
             totalDurationInSeconds: {
               $sum: {
                 $add: [
@@ -339,47 +347,70 @@ class Reports {
             totalCount: { $sum: 1 },
           },
         },
+        {
+          $project: {
+            _id: 0, // Exclude _id field
+            date: "$_id",
+            totalDurationInSeconds: 1,
+            missedCalls: 1,
+            AbandonedCalls: 1,
+            connectedCalls: 1,
+          }
+        },
+        {
+          $sort: { date: -1 },
+        }
       ]);
-      // Extract total duration from aggregation result
-      const totalSeconds =
-        totalDuration.length > 0 ? totalDuration[0].totalDurationInSeconds : 0;
-      console.log(totalSeconds);
-      const totalCount =
-        totalDuration.length > 0 ? totalDuration[0].totalCount : 0;
-      console.log(totalCount);
-      // Convert total duration to HH:MM:SS format
-      const hours = Math.floor(totalSeconds / 3600);
-      const minutes = Math.floor((totalSeconds % 3600) / 60);
-      const seconds = totalSeconds % 60;
-      const formattedDuration = `${hours.toString().padStart(2, "0")}:${minutes
-        .toString()
-        .padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
 
-      // Calculate average call duration
-      const averageDurationSeconds =
-        totalCount > 0 ? totalSeconds / totalCount : 0;
-      console.log(averageDurationSeconds)
-      // Convert average duration to HH:MM:SS format
-      const avgHours = Math.floor(averageDurationSeconds / 3600);
-      const avgMinutes = Math.floor((averageDurationSeconds % 3600) / 60);
-      const avgSeconds = Math.floor(averageDurationSeconds % 60);
-      const formattedAvgDuration = `${avgHours
-        .toString()
-        .padStart(2, "0")}:${avgMinutes
-          .toString()
-          .padStart(2, "0")}:${avgSeconds.toString().padStart(2, "0")}`;
+      const data = []
+      totalDuration.map((item) => {
+        const totalSeconds = item?.totalDurationInSeconds;
+        const totalCount = item?.totalCount;
+        const formattedDuration = formatTime(totalSeconds)
+
+        const averageDurationSeconds = totalCount > 0 ? totalSeconds / totalCount : 0;
+        const formattedAvgDuration = formatTime(averageDurationSeconds)
+
+
+        const details = [{
+          date: item.date,
+          ReservationCallDuration: formattedDuration,
+          avgReservationCallDuration: formattedAvgDuration
+        }]
+
+        data.push(details)
+      })
+
+      const a = [].concat(...data)
+      const original = []
+      a.map((item) => {
+        const f = dispositionCounts
+        f.map((item2) => {
+          if (item2.date === item.date) {
+            const data = [{
+              ReservationCallDuration: item?.ReservationCallDuration,
+              date: item?.date,
+              avgReservationCallDuration: item?.avgReservationCallDuration,
+              count: item2?.count,
+              disposition: item2?.disposition
+            }]
+            original.push(data)
+          } else {
+            const data = [{
+              ReservationCallDuration: item?.ReservationCallDuration,
+              date: item?.date,
+              avgReservationCallDuration: item?.avgReservationCallDuration,
+            }]
+            original.push(data)
+          }
+        })
+      })
 
       return res.status(200).json({
         status: true,
         code: 200,
         message: "TODO",
-        data: [
-          {
-            type: "Total Calls",
-            attendedCalls: connectedCalls,
-          },
-        ]
-
+        data: [].concat(...original),
       })
 
     } catch (error) {
@@ -388,7 +419,7 @@ class Reports {
     }
   }
 
-  ///////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////////////
 
   static async getFirstCallResolutionReport(req, res, next) {
     try {
@@ -396,21 +427,68 @@ class Reports {
       const admin_Id = req.authData?._id;
 
       // Total Calls
-      const incommingCalls = await callsDetails.countDocuments({
-        admin_id: new mongoose.Types.ObjectId(admin_Id),
-        type: "Inbound",
-      });
-      const outgoingCalls = await callsDetails.countDocuments({
-        admin_id: new mongoose.Types.ObjectId(admin_Id),
-        type: "Outbound",
-      });
+      const aggregationPipeline = [
+        {
+          $match: {
+            admin_id: new mongoose.Types.ObjectId(admin_Id),
+            call_date: { $exists: true } // Ensure call_date exists
+          }
+        },
+        {
+          $group: {
+            _id: "$call_date",
+            count: { $sum: 1 },
+            inboundCalls: { $sum: { $cond: [{ $eq: ["$type", "Inbound"] }, 1, 0] } },
+            outboundCalls: { $sum: { $cond: [{ $eq: ["$type", "Outbound"] }, 1, 0] } },
+            connectedCalls: {
+              $sum: {
+                $cond: [
+                  {
+                    $and: [
+                      { $eq: ["$type", "Inbound"] },
+                      { $eq: ["$dial_status", "Connected"] }
+                    ]
+                  },
+                  1,
+                  0
+                ]
+              }
+            }
+          },
 
-      // Counting attended calls when type is "Connected"
-      const connectedCalls = await callsDetails.countDocuments({
-        admin_id: new mongoose.Types.ObjectId(admin_Id),
-        type: "Inbound",
-        dial_status: "Connected",
-      });
+        },
+
+        {
+          $project: {
+            _id: 0,
+            date: "$_id",
+            inboundCalls: 1,
+            outboundCalls: 1,
+            connectedCalls: 1,
+          }
+        }
+      ];
+
+      const results = await callsDetails.aggregate(aggregationPipeline);
+
+      const data = []
+      results.map((item) => {
+        const inbound = item?.inboundCalls;
+        const outbound = item?.outboundCalls;
+        const connected = item?.connectedCalls
+
+        const details = [{
+          inbound,
+          date: item.date,
+          outbound,
+          connected,
+        }]
+
+        data.push(details)
+
+      })
+
+      // Extract counts for each type
 
 
       // Find the first inbound call made by each agent with different guest IDs
@@ -419,73 +497,81 @@ class Reports {
           $match: {
             admin_id: new mongoose.Types.ObjectId(admin_Id),
             type: "Inbound",
-            guest_id: { $exists: true } // Assuming there's a field for guest ID
+            call_date: { $exists: true },
+            guest_id: { $exists: true }
           }
         },
         {
           $group: {
-            _id: { agent_id: "$agent_id", guest_id: "$guest_id" }, // Grouping by agent_id and guest_id
-            firstCall: { $min: "$call_date" }, // Finding the minimum call date (first call)
-            records: { $push: "$$ROOT" } // Pushing all records for later retrieval
-          }
-        },
-        {
-          $group: {
-            _id: "$_id.guest_id", // Grouping by guest_id only
-            firstCalls: {
-              $push: {
-                firstCall: "$firstCall",
-                records: "$records"
-              }
-            }
+            _id: { agent_id: "$agent_id", guest_id: "$guest_id", date: "$call_date" },
+            firstCall: { $min: "$call_date" },
+            records: { $push: "$$ROOT" }
           }
         },
         {
           $lookup: {
-            from: "dispositions", // Assuming the Disposition collection name
-            localField: "firstCalls.records.disposition",
+            from: "dispositions",
+            localField: "records.disposition",
             foreignField: "_id",
-            as: "matched_dispositions",
-          },
+            as: "matched_dispositions"
+          }
         },
         {
-          $unwind: "$matched_dispositions",
+          $unwind: "$matched_dispositions"
         },
         {
           $match: {
-            "matched_dispositions.name": "Reservation",
-          },
+            "matched_dispositions.name": "Reservation"
+          }
         },
         {
           $group: {
-            _id: null,
-            FCR: { $sum: 1 },
-          },
+            _id: { date: "$_id.date" },
+            FCR: { $sum: 1 }
+          }
         },
         {
           $project: {
             _id: 0,
-            FCR: 1,
-          },
-        },
-
-
-
+            date: "$_id.date",
+            FCR: 1
+          }
+        }
       ]);
-      console.log(firstInboundCallsByAgent)
+
+      // The result will contain an array of objects, each representing FCR for a specific dat
+
+      const a = [].concat(...data)
+      const original = []
+      a.map((item) => {
+        const f = firstInboundCallsByAgent
+        f.map((item2) => {
+          if (item2.date === item.date) {
+            const data = [{
+              inbound: item?.inbound,
+              date: item?.date,
+              outbound: item?.outbound,
+              connected: item?.connected,
+              FCR: item2?.FCR
+            }]
+            original.push(data)
+          } else {
+            const data = [{
+              inbound: item?.inbound,
+              date: item?.date,
+              outbound: item?.outbound,
+              connected: item?.connected,
+            }]
+            original.push(data)
+          }
+        })
+      })
 
       return res.status(200).json({
         status: true,
         code: 200,
         message: "TODO",
-        data: [
-          {
-            type: "Total Calls",
-            totalCalls: incommingCalls + outgoingCalls,
-            attendedCalls: connectedCalls,
-            FCRCount: firstInboundCallsByAgent[0].FCR || ''
-          },
-        ],
+        data: [].concat(...original),
       });
     } catch (error) {
       return next(new ErrorHandler(error.message, 500));
@@ -502,6 +588,7 @@ class Reports {
       {
         $match: {
           agent_id: new mongoose.Types.ObjectId(req.authData._id),
+          call_date: { $exists: true },
         },
       },
 
@@ -520,7 +607,7 @@ class Reports {
 
       {
         $group: {
-          _id: null,
+          _id: "$call_date",
           totalDurationInSeconds: {
             $sum: {
               $add: [
@@ -530,6 +617,10 @@ class Reports {
               ],
             },
           },
+          inboundCalls: { $sum: { $cond: [{ $eq: ["$type", "Inbound"] }, 1, 0] } },
+          outboundCalls: { $sum: { $cond: [{ $eq: ["$type", "Outbound"] }, 1, 0] } },
+          missedCalls: { $sum: { $cond: [{ $eq: ["$dial_status", "Disconnected"] }, 1, 0] } },
+          AbandonedCalls: { $sum: { $cond: [{ $eq: ["$dial_status", "Rejected"] }, 1, 0] } },
           totalCount: { $sum: 1 },
           agent_id: { $first: "$agent_info._id" }, // Save the agent_id for later use
           agent_name: { $first: "$agent_info.name" },
@@ -539,59 +630,256 @@ class Reports {
       {
         $project: {
           _id: 0, // Exclude the _id field from the output
+          date: "$_id",
           agent_id: 1, // Include the agent_id field in the output
           agent_name: 1, // Include the agent_name field in the output
           totalDurationInSeconds: 1,
+          inboundCalls: 1,
+          AbandonedCall: 1,
+          missedCalls: 1,
+          outboundCalls: 1,
           totalCount: 1,
         }
       },
     ]);
 
+    const data = []
+
+    agentPerformance.map((item) => {
+      const details = [{
+        date: item?.date,
+        agent_id: item?.agent_id,
+        agent_name: item?.agent_name,
+        formattedOutboundDuration: formatTime(item?.totalDurationInSeconds),
+        inboundCalls: item?.inboundCalls,
+        AbandonedCalls: item?.AbandonedCall,
+        missedCalls: item?.missedCalls,
+        outboundCalls: item?.outboundCalls,
+        totalCount: item?.totalCount
+      }]
+
+      data.push(details)
+    })
+
 
     // reservation call count
-    const [incomingCallsCount, reservationCount] = await Promise.all([
-      callsDetails.countDocuments({ agent_id: new mongoose.Types.ObjectId(req.authData._id) }),
-      dispositionDetails.countDocuments({ name: "Reservation" }),
+    const reservationCount = await callsDetails.aggregate([
+      {
+        $match: {
+          agent_id: new mongoose.Types.ObjectId(req.authData._id),
+          call_date: { $exists: true, $ne: null }
+          // Add any other conditions if needed
+        }
+      },
+      {
+        $lookup: {
+          from: "dispositions",
+          localField: "disposition",
+          foreignField: "_id",
+          as: "dispositions"
+        }
+      },
+      {
+        $unwind: "$dispositions"
+      },
+      {
+        $match: {
+          "dispositions.name": "Reservation",
+        }
+      },
+      {
+        $group: {
+          _id: "$call_date",
+          count: { $sum: 1 }
+        }
+      },
+      {
+        $project: {
+          _id: 0,
+          date: "$_id",
+          count: 1
+        }
+      }
     ]);
 
-    // abandonedCall count
-    const AbandonedCall = await callsDetails.countDocuments({
-      agent_id: new mongoose.Types.ObjectId(req.authData._id),
-      dial_status: "Rejected"
+    const a = [].concat(...data)
+    const original = []
+    a.map((item) => {
+      const f = reservationCount
+      f.map((item2) => {
+        if (item2.date === item.date) {
+          const data = [{
+            formattedOutboundDuration: item?.formattedOutboundDuration,
+            date: item?.date,
+            agent_id: item?.agent_id,
+            agent_name: item?.agent_name,
+            inboundCalls: item?.inboundCalls,
+            missedCalls: item2?.missedCalls,
+            outboundCalls: item2?.outboundCalls,
+            totalCount: item?.totalCount,
+            count: item2?.count
+          }]
+          original.push(data)
+        } else {
+          const data = [{
+            date: item?.date,
+            agent_id: item?.agent_id,
+            agent_name: item?.agent_name,
+            inboundCalls: item?.inboundCalls,
+            missedCalls: item2?.missedCalls,
+            outboundCalls: item2?.outboundCalls,
+            totalCount: item?.totalCount,
+          }]
+          original.push(data)
+        }
+      })
     })
 
-    //missed call count
-
-    const MissedCall = await callsDetails.countDocuments({
-      agent_id: new mongoose.Types.ObjectId(req.authData._id),
-      dial_status: "Disconnected"
-    })
-
-
-    const outboundHours = Math.floor(agentPerformance[0].totalDurationInSeconds / 3600);
-    const outboundMinutes = Math.floor((agentPerformance[0].totalDurationInSeconds % 3600) / 60);
-    const outboundSeconds = agentPerformance[0].totalDurationInSeconds % 60;
-
-    const formattedOutboundDuration = `${outboundHours.toString().padStart(2, '0')}:${outboundMinutes.toString().padStart(2, '0')}:${outboundSeconds.toString().padStart(2, '0')}`;
-
-    //console.log(incomingCallsCount-AbandonedCall-reservationCount)
     return res.status(200).json({
       status: true,
       code: 200,
-      data: {
-        agent_id: agentPerformance[0].agent_id,
-        agent_name: agentPerformance[0].agent_name,
-        formattedInboundDuration: formattedOutboundDuration,
-        totalCount: agentPerformance[0].totalCount,
-        reservationCount: reservationCount,
-        AbandonedCall: AbandonedCall,
-        MissedCall: MissedCall
-        // Include other fields from agentPerformance as needed
-      }
+      data: [].concat(...original),
     })
   }
 
+  static async getCallHealthReport(req, res, next) {
+    try {
+      // Admin Id from AuthData
+      const admin_Id = req.authData?._id;
+      // console.log(admin_Id)
 
+      // Total Calls
+      const incommingCalls = await callsDetails?.countDocuments({
+        admin_id: new mongoose.Types.ObjectId(admin_Id),
+        type: "Inbound",
+      }) || 0;
+      const outgoingCalls = await callsDetails?.countDocuments({
+        admin_id: new mongoose.Types.ObjectId(admin_Id),
+        type: "Outbound",
+      }) || 0;
+
+      const disconnectedRecords = await callsDetails?.countDocuments({
+        admin_id: new mongoose.Types.ObjectId(admin_Id),
+        dial_status: "Disconnected"
+      }) || 0;
+
+      const totalRecords = incommingCalls + outgoingCalls + disconnectedRecords
+
+      // console.log(disconnectedRecords, totalRecords)
+      //missed call rate
+      const missedCallRate = (disconnectedRecords / totalRecords) * 100;
+      //Total call duration
+      const totalDuration = await callsDetails.aggregate([
+        {
+          $match: { admin_id: new mongoose.Types.ObjectId(admin_Id) }
+        },
+        {
+          $group: {
+            _id: null,
+            totalDurationInSeconds: {
+              $sum: {
+                $add: [
+                  { $multiply: [{ $toInt: { $arrayElemAt: [{ $split: ["$talktime", ":"] }, 0] } }, 3600] },
+                  { $multiply: [{ $toInt: { $arrayElemAt: [{ $split: ["$talktime", ":"] }, 1] } }, 60] },
+                  { $toInt: { $arrayElemAt: [{ $split: ["$talktime", ":"] }, 2] } }
+                ]
+              }
+            },
+            totalCount: { $sum: 1 }
+          }
+        }
+      ]);
+
+      // Extract total duration from aggregation result
+      const totalSeconds = totalDuration.length > 0 ? totalDuration[0].totalDurationInSeconds : 0;
+      // console.log(totalSeconds)
+      const totalCount = totalDuration.length > 0 ? totalDuration[0].totalCount : 0;
+      // console.log(totalCount)
+      // Convert total duration to HH:MM:SS format
+      const hours = Math.floor(totalSeconds / 3600);
+      const minutes = Math.floor((totalSeconds % 3600) / 60);
+      const seconds = totalSeconds % 60;
+      const formattedDuration = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+
+      // Calculate average call duration
+      const averageDurationSeconds = totalCount > 0 ? totalSeconds / totalCount : 0;
+
+      // Convert average duration to HH:MM:SS format
+      const avgHours = Math.floor(averageDurationSeconds / 3600);
+      const avgMinutes = Math.floor((averageDurationSeconds % 3600) / 60);
+      const avgSeconds = Math.floor(averageDurationSeconds % 60);
+      const formattedAvgDuration = `${avgHours.toString().padStart(2, '0')}:${avgMinutes.toString().padStart(2, '0')}:${avgSeconds.toString().padStart(2, '0')}`;
+
+
+      //Avg hold time
+      const averageHoldTime = await callsDetails.aggregate([
+        {
+          $match: { admin_id: new mongoose.Types.ObjectId(admin_Id) }
+        },
+        {
+          $group: {
+            _id: null,
+            totalHoldTime: {
+              $sum: {
+                $cond: {
+                  if: { $ne: ["$hold_time", ""] },
+                  then: {
+                    $add: [
+                      { $multiply: [{ $toInt: { $arrayElemAt: [{ $split: ["$hold_time", ":"] }, 0] } }, 3600] },
+                      { $multiply: [{ $toInt: { $arrayElemAt: [{ $split: ["$hold_time", ":"] }, 1] } }, 60] },
+                      { $toInt: { $arrayElemAt: [{ $split: ["$hold_time", ":"] }, 2] } }
+                    ]
+                  },
+                  else: 0
+                }
+              }
+            },
+            count: { $sum: 1 }
+          }
+        },
+        {
+          $project: {
+            _id: 0,
+            averageHoldTimeInSeconds: { $divide: ["$totalHoldTime", "$count"] }
+          }
+        },
+        {
+          $project: {
+            averageHoldTimeHHMMSS: {
+              $dateToString: {
+                date: { $toDate: { $multiply: ["$averageHoldTimeInSeconds", 1000] } },
+                format: "%H:%M:%S",
+                timezone: "UTC"
+              }
+            }
+          }
+        }
+      ])
+
+      return res.status(200).json({
+        status: true,
+        code: 200,
+        message: "Call Health Report",
+        data: [
+          {
+            totalCalls: incommingCalls + outgoingCalls,
+            totalCallsDuration: formattedDuration,
+            averageCallDuration: formattedAvgDuration,
+            missedCallRate: missedCallRate.toFixed(2),
+            averageHoldTime: averageHoldTime[0]?.averageHoldTimeHHMMSS || ""
+          },
+        ]
+
+      })
+
+    } catch (error) {
+      console.log(error)
+      return res.status(200).json({
+        status: false,
+        code: 500,
+      })
+    }
+  }
 
 }
 

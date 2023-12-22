@@ -1247,7 +1247,7 @@ class AgentModel {
   static async updateAgent(req, res, next) {
 
     if (req.authData.role === "ADMIN") {
-      const { _id, first_name, gender, date_of_birth, contact, email, department, designation, password, displayStatus } = req.body;
+      const { _id, name, gender, date_of_birth, contact, email, department, designation, password, displayStatus } = req.body;
     
 
       if (!_id) {
@@ -1258,7 +1258,7 @@ class AgentModel {
         });
       }
 
-      if (first_name && gender && date_of_birth && contact && email && department && designation && password && displayStatus) {
+      if (name && gender && date_of_birth && contact && email && department && designation && password && displayStatus) {
         return res.status(401).json({
           status: false,
           code: 401,
@@ -1269,7 +1269,7 @@ class AgentModel {
 
       try {
         let updateFields = {
-          name: first_name,
+          name: name,
           email: email,
           displayStatus : displayStatus,
           phone_number: contact,
