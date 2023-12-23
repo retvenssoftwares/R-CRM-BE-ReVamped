@@ -10,6 +10,16 @@ const dispositionSchema = mongoose.Schema(
     },
     
 
+    label_color:{
+      type:String,
+      default:""
+    },
+
+    priority:{
+      type:String,
+      default:""
+    },
+    
     short_code : {
       type:String,
       default:""

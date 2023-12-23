@@ -13,6 +13,7 @@ import CallDetail from "../model/callDetails.js";
 import mongoose from "mongoose";
 import dispositions from "../model/Disposition.js";
 import { formatTime } from "../utils/formattime.js";
+import JWT from 'jsonwebtoken';
 import departments from "../model/department.js"
 import designations from "../model/designation.js";
 import hotel from "../model/hotels.js"
@@ -1723,6 +1724,8 @@ class AdminModel {
       if (req.authData.role === "ADMIN") {
         const disposition = dispositions.create({
           name: req.body.name,
+          label_color : req.body.label_color,
+          priority : req.body.label_color,
           short_code: req.body.short_code,
           addedBy: _id
         })
@@ -1771,7 +1774,7 @@ class AdminModel {
   static async addDepartment(req, res, next) {
     try {
       const _id = req.authData._id
-      if (req.authData.role === "ADMIN") {
+      if (!req.body.display_status && !req.body._id && req.authData.role === "ADMIN") {
         const department = departments.create({
           department_name: req.body.department_name,
           short_code: req.body.short_code,
@@ -1781,11 +1784,13 @@ class AdminModel {
         return res.status(200).json({
           success: true,
           code: 200,
+          message : "Data added",
           data: department
         });
-      } else if (req.body.display_status === "0" && req.body.id) {
+      }  
+      if (req.body.display_status === "0" && req.body._id && req.authData.role === "ADMIN") {
         try {
-          const update = await departments.updateOne({ _id: new mongoose.Types.ObjectId(id) }, { $set: { display_status: "0" } })
+          const update = await departments.updateOne({ _id: new mongoose.Types.ObjectId(req.body._id) }, { $set: { display_status: "0" } })
 
           if (update){
             return res.status(200).json({
@@ -1924,45 +1929,83 @@ class AdminModel {
     }
   }
 
-  static async getDepartMentDesignationDisposition(req,res,next){
+  static async getDepartMent(req,res,next){
     try {
-      const department = await departments.findOne({_id : new mongoose.Types.ObjectId(req.body.id)}).lean()
-      const all_department = await departments.find({}).lean()
+      const _id = req.authData._id
+      const all_department = await departments.find({display_status : "1", addedBy : _id}).lean()
   
-      const designation = await designations.findOne({_id : new mongoose.Types.ObjectId(req.body.id)}).lean()
-      const all_designation = await designations.find({}).lean() 
-  
-      const disposition = await dispositions.findOne({_id : new mongoose.Types.ObjectId(req.body.id)}).lean()
-      const all_disposition = await dispositions.find({}).lean()
-  
-      const hotels = await hotel.findOne({_id : new mongoose.Types.ObjectId(req.body.id)}).lean()
-      const all_hotel = await hotel.find({}).lean()
-  
-      if(department){
+      if(all_department){
         return res.status(200).json({
           success: true,
           code: 200,
-          data: department,
+          data: all_department,
         });
-      }else if(designation){
+      }
+    }catch(err){
+      return res.status(500).json({
+        success: false,
+        code: 500,
+        error: err.message
+      });
+    }
+  
+  }
+
+  static async getDisposition(req,res,next){
+    try {
+
+      const _id = req.authData._id
+       const all_disposition = await dispositions.find({display_status : "1", addedBy : _id}).lean()
+      if(all_disposition){
         return res.status(200).json({
           success: true,
           code: 200,
-          data: designation,
-        })
-      }else if(disposition){
+          data: all_disposition,
+        });
+      }
+    }catch(err){
+      return res.status(500).json({
+        success: false,
+        code: 500,
+        error: err.message
+      });
+    }
+  
+  }
+
+  static async getDesignation(req,res,next){
+    try {
+      
+      const _id = req.authData._id
+       const all_designation = await designations.find({display_status : "1", addedBy : _id}).lean() 
+      if(all_designation){
         return res.status(200).json({
           success: true,
           code: 200,
-          data: disposition,
-        })
-      }else if(hotels){
+          data: all_designation,
+        });
+      }
+    }catch(err){
+      return res.status(500).json({
+        success: false,
+        code: 500,
+        error: err.message
+      });
+    }
+  
+  }
+
+  static async getHotel(req,res,next){
+    try {
+      const _id = req.authData._id
+      const all_hotel = await hotel.find({display_status : "1", addedBy : _id}).lean()
+      if(all_hotel){
         return res.status(200).json({
           success: true,
           code: 200,
-          data: hotels,
-        })
-      } 
+          data: all_hotel,
+        });
+      }
     }catch(err){
       return res.status(500).json({
         success: false,

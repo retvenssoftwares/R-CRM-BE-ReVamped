@@ -745,8 +745,7 @@ class Reports {
   static async getCallHealthReport(req, res, next) {
     try {
       // Admin Id from AuthData
-      const admin_Id = req.authData?._id;
-      // console.log(admin_Id)
+      const admin_Id = req.authData._id;
 
       // Total Calls
       const incommingCalls = await callsDetails?.countDocuments({
@@ -763,19 +762,18 @@ class Reports {
         dial_status: "Disconnected"
       }) || 0;
 
-      const totalRecords = incommingCalls + outgoingCalls + disconnectedRecords
 
-      // console.log(disconnectedRecords, totalRecords)
-      //missed call rate
-      const missedCallRate = (disconnectedRecords / totalRecords) * 100;
       //Total call duration
       const totalDuration = await callsDetails.aggregate([
         {
-          $match: { admin_id: new mongoose.Types.ObjectId(admin_Id) }
+          $match: {
+            admin_id: new mongoose.Types.ObjectId(admin_Id),
+            call_date: { $exists: true },
+          }
         },
         {
           $group: {
-            _id: null,
+            _id: "$call_date",
             totalDurationInSeconds: {
               $sum: {
                 $add: [
@@ -785,40 +783,59 @@ class Reports {
                 ]
               }
             },
-            totalCount: { $sum: 1 }
+            totalCount: { $sum: 1 },
+            // incommingCalls: { $sum: { $cond: [{ $eq: ["$type", "Inbound"] }, 1, 0] } },
+            // outboundCalls: { $sum: { $cond: [{ $eq: ["$type", "Outbound"] }, 1, 0] } },
+            disconnectedRecords: { $sum: { $cond: [{ $eq: ["$dial_status", "Disconnected"] }, 1, 0] } },
+          }
+        },
+        {
+          $project: {
+            date: "$_id",
+            totalDurationInSeconds: 1,
+            totalCount: 1,
+            disconnectedRecords: 1,
           }
         }
       ]);
 
-      // Extract total duration from aggregation result
-      const totalSeconds = totalDuration.length > 0 ? totalDuration[0].totalDurationInSeconds : 0;
-      // console.log(totalSeconds)
-      const totalCount = totalDuration.length > 0 ? totalDuration[0].totalCount : 0;
-      // console.log(totalCount)
-      // Convert total duration to HH:MM:SS format
-      const hours = Math.floor(totalSeconds / 3600);
-      const minutes = Math.floor((totalSeconds % 3600) / 60);
-      const seconds = totalSeconds % 60;
-      const formattedDuration = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+      // console.log(totalDuration)
 
-      // Calculate average call duration
-      const averageDurationSeconds = totalCount > 0 ? totalSeconds / totalCount : 0;
+      const duration = []
+      totalDuration.map((item) => {
+        const totalDurationInSeconds = item?.totalDurationInSeconds
 
-      // Convert average duration to HH:MM:SS format
-      const avgHours = Math.floor(averageDurationSeconds / 3600);
-      const avgMinutes = Math.floor((averageDurationSeconds % 3600) / 60);
-      const avgSeconds = Math.floor(averageDurationSeconds % 60);
-      const formattedAvgDuration = `${avgHours.toString().padStart(2, '0')}:${avgMinutes.toString().padStart(2, '0')}:${avgSeconds.toString().padStart(2, '0')}`;
+        const formattedDuration = formatTime(totalDurationInSeconds)
+
+        const averageDurationSeconds = item?.totalCount > 0 ? totalDurationInSeconds / item?.totalCount : 0;
+
+        const formattedAvgDuration = formatTime(averageDurationSeconds)
+        const data = [{
+          formattedDuration,
+          date: item?.date,
+          formattedAvgDuration
+        }]
+
+        duration.push(data)
+      })
+
+      // console.log(duration)
+
+
+      const missedCallRate = (disconnectedRecords / totalDuration[0]?.totalCount) * 100 > 0 ? (disconnectedRecords / totalDuration[0]?.totalCount) * 100 : 0;
 
 
       //Avg hold time
       const averageHoldTime = await callsDetails.aggregate([
         {
-          $match: { admin_id: new mongoose.Types.ObjectId(admin_Id) }
+          $match: {
+            admin_id: new mongoose.Types.ObjectId(admin_Id),
+            call_date: { $exists: true },
+          }
         },
         {
           $group: {
-            _id: null,
+            _id: "$call_date",
             totalHoldTime: {
               $sum: {
                 $cond: {
@@ -840,36 +857,60 @@ class Reports {
         {
           $project: {
             _id: 0,
-            averageHoldTimeInSeconds: { $divide: ["$totalHoldTime", "$count"] }
-          }
+            date: "$_id",
+            averageHoldTimeInSeconds: { $divide: ["$totalHoldTime", "$count"] },
+          },
         },
-        {
-          $project: {
-            averageHoldTimeHHMMSS: {
-              $dateToString: {
-                date: { $toDate: { $multiply: ["$averageHoldTimeInSeconds", 1000] } },
-                format: "%H:%M:%S",
-                timezone: "UTC"
-              }
-            }
-          }
-        }
       ])
 
+
+
+      const avg = []
+      averageHoldTime.map((item) => {
+
+        const averageHoldTime = item?.averageHoldTimeInSeconds > 0 ? item?.averageHoldTimeInSeconds : 0
+
+        const averageHoldTimeInHHMMSS = formatTime(averageHoldTime)
+
+        const data = [{
+          averageHoldTimeInHHMMSS: averageHoldTimeInHHMMSS,
+          date: item?.date
+        }]
+        avg.push(data)
+      })
+
+
+      const originalAvg = [].concat(...avg)
+      const a = [].concat(...duration)
+
+
+      const result = a.map((item) => {
+        const matchingAvg = originalAvg.find((item2) => item2.date === item.date);
+      
+        if (matchingAvg) {
+          return {
+            formattedDuration: item.formattedDuration,
+            date: item.date,
+            formattedAvgDuration: item.formattedAvgDuration,
+            averageHoldTimeInHHMMSS: matchingAvg.averageHoldTimeInHHMMSS,
+          };
+        } else {
+          return {
+            formattedDuration: item.formattedDuration,
+            date: item.date,
+            formattedAvgDuration: item.formattedAvgDuration,
+          };
+        }
+      });
+      
       return res.status(200).json({
         status: true,
         code: 200,
         message: "Call Health Report",
-        data: [
-          {
-            totalCalls: incommingCalls + outgoingCalls,
-            totalCallsDuration: formattedDuration,
-            averageCallDuration: formattedAvgDuration,
-            missedCallRate: missedCallRate.toFixed(2),
-            averageHoldTime: averageHoldTime[0]?.averageHoldTimeHHMMSS || ""
-          },
-        ]
-
+        data:{
+          result,
+          missedCallRate
+        } 
       })
 
     } catch (error) {

@@ -18,6 +18,7 @@ async function signJwt(payloadData) {
 
 async function verifyJwt(req, res, next) {
   const { authorization } = req.headers;
+
   
   try {
     if (!authorization) {
