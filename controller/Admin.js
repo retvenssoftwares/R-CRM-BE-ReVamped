@@ -1725,7 +1725,7 @@ class AdminModel {
         const disposition = dispositions.create({
           name: req.body.name,
           label_color: req.body.label_color,
-          priority: req.body.label_color,
+          priority: req.body.priority,
           short_code: req.body.short_code,
           addedBy: new Object(_id)
         })
@@ -1733,11 +1733,12 @@ class AdminModel {
         return res.status(200).json({
           success: true,
           code: 200,
+          message : "Data Added",
           data: disposition
         });
-      } else if (req.body.display_status === "0" && req.body._id && req.authData.role === "ADMIN") {
+      } else if (req.body.display_status === "0" && req.body._id  && req.authData.role === "ADMIN") {
         try {
-          const update = await dispositions.updateOne({ _id: new mongoose.Types.ObjectId(id) }, { $set: { display_status: "0" } })
+          const update = await dispositions.updateOne({ _id: new mongoose.Types.ObjectId(req.body._id) }, { $set: { display_status: "0" } })
           if (update) {
             return res.status(200).json({
               success: true,
@@ -1838,11 +1839,12 @@ class AdminModel {
         return res.status(200).json({
           success: true,
           code: 200,
+          message : "Data added..",
           data: designation
         });
       } else if (req.body.display_status === "0" && req.body._id && req.authData.role === "ADMIN") {
         try {
-          const update = await designations.updateOne({ _id: new mongoose.Types.ObjectId(id) }, { $set: { display_status: "0" } })
+          const update = await designations.updateOne({ _id: new mongoose.Types.ObjectId(req.body._id) }, { $set: { display_status: "0" } })
 
           if (update) {
             return res.status(200).json({
@@ -1896,7 +1898,7 @@ class AdminModel {
         });
       } else if (req.body.display_status === "0" && req.body._id && req.authData.role === "ADMIN") {
         try {
-          const update = await hotel.updateOne({ _id: new mongoose.Types.ObjectId(id) }, { $set: { display_status: "0" } })
+          const update = await hotel.updateOne({ _id: new mongoose.Types.ObjectId(req.body._id) }, { $set: { display_status: "0" } })
 
           if (update) {
             return res.status(200).json({
@@ -1934,12 +1936,12 @@ class AdminModel {
   static async getDepartMent(req, res, next) {
     try {
       const _id = req.authData._id
-      console.log(req.authData.role)
+     
       const all_department = await departments.find({ display_status: "1"}).lean()
 
       const department = [];
 
-      if (all_department) {
+      if (all_department && req.authData.role === "AGENT") {
         await Promise.all(
           all_department.map(async (item) => {
             const exist = await User.findOne({
@@ -1948,12 +1950,17 @@ class AdminModel {
             });
             if (exist && req.authData.role === "AGENT") {
               department.push(item);
-            }else if(req.authData.role === "ADMIN"){
-              const all_department = await departments.find({ display_status: "1", addedBy : new mongoose.Types.ObjectId(_id) }).lean()
-              department.push(all_department)
             }
           })
         );
+      }else if(req.authData.role === "ADMIN"){
+        const all_department = await departments.find({ display_status: "1", addedBy : new mongoose.Types.ObjectId(_id) }).lean()
+        department.push(all_department)
+        return res.status(200).json({
+          success: true,
+          code: 200,
+          data: [].concat(...department),
+        });
       }
 
       return res.status(200).json({
@@ -1978,22 +1985,27 @@ class AdminModel {
       const all_disposition = await dispositions.find({ display_status: "1"}).lean()
       const disposition = [];
 
-      if (all_disposition) {
+      if (all_disposition  &&  req.authData.role === "AGENT") {
         await Promise.all(
           all_disposition.map(async (item) => {
-            console.log(_id)
+         
             const exist = await User.findOne({
               _id: new mongoose.Types.ObjectId(_id),
               created_by: new mongoose.Types.ObjectId(item.addedBy)
             });
-            if (exist && req.authData.role === "AGENT") {
+            if (exist) {
               disposition.push(item);
-            }else if(req.authData.role === "ADMIN"){
-              const all_department = await dispositions.find({ display_status: "1", addedBy : new mongoose.Types.ObjectId(_id) }).lean()
-              disposition.push(all_department)
             }
           })
         );
+      }else if(req.authData.role === "ADMIN"){
+        const all_department = await dispositions.find({ display_status: "1", addedBy : new mongoose.Types.ObjectId(_id) }).lean()
+        disposition.push(all_department)
+        return res.status(200).json({
+          success: true,
+          code: 200,
+          data: [].concat(...disposition),
+        });
       }
 
  
@@ -2020,7 +2032,7 @@ class AdminModel {
       const all_designation = await designations.find({ display_status: "1"}).lean()
       const designation = [];
 
-      if (all_designation) {
+      if (all_designation && req.authData.role === "AGENT") {
         await Promise.all(
           all_designation.map(async (item) => {
             const exist = await User.findOne({
@@ -2029,12 +2041,17 @@ class AdminModel {
             });
             if (exist && req.authData.role === "AGENT") {
               designation.push(item);
-            }else if(req.authData.role === "ADMIN"){
-              const all_designation = await designations.find({ display_status: "1", addedBy : new mongoose.Types.ObjectId(_id) }).lean()
-              designation.push(all_designation)
             }
           })
         );
+      }else if(req.authData.role === "ADMIN"){
+        const all_designation = await designations.find({ display_status: "1", addedBy : new mongoose.Types.ObjectId(_id) }).lean()
+        designation.push(all_designation)
+        return res.status(200).json({
+          success: true,
+          code: 200,
+          data: [].concat(...designation),
+        });
       }
  
       return res.status(200).json({
@@ -2056,9 +2073,9 @@ class AdminModel {
     try {
       const _id = req.authData._id
       const all_hotel = await hotel.find({ display_status: "1"}).lean()
-      const hotel = [];
+      const hotels = [];
 
-      if (all_hotel) {
+      if (all_hotel && req.authData.role === "AGENT") {
         await Promise.all(
           all_hotel.map(async (item) => {
             const exist = await User.findOne({
@@ -2066,19 +2083,24 @@ class AdminModel {
               created_by: new mongoose.Types.ObjectId(item.addedBy)
             });
             if (exist && req.authData.role === "AGENT") {
-              hotel.push(item);
-            }else if(req.authData.role === "ADMIN"){
-              const all_hotel = await hotel.find({ display_status: "1", addedBy : new mongoose.Types.ObjectId(_id) }).lean()
-              hotel.push(all_hotel)
+              hotels.push(item);
             }
           })
         );
+      }else if(req.authData.role === "ADMIN"){
+        const all_hotel = await hotel.find({ display_status: "1", addedBy : new mongoose.Types.ObjectId(_id) }).lean()
+        hotels.push(all_hotel)
+        return res.status(200).json({
+          success: true,
+          code: 200,
+          data: [].concat(...hotels),
+        });
       }
  
       return res.status(200).json({
         success: true,
         code: 200,
-        data: hotel,
+        data: hotels,
       });
     } catch (err) {
       return res.status(500).json({
