@@ -38,6 +38,6 @@ router.post("/designation",verifyJwt,AdminModel.addDesignation)
 router.post("/addhotel",verifyJwt,AdminModel.addHotel)
 router.get("/department",verifyJwt,AdminModel.getDepartMent)
 router.get("/designation",verifyJwt,AdminModel.getDesignation)
-router.get("/disposition",verifyJwt,AdminModel.getDisposition)
+router.get("/disposition",AdminModel.getDisposition)
 router.get("/hotel",verifyJwt,AdminModel.getHotel)
 export default router

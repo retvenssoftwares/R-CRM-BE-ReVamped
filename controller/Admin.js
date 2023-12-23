@@ -1955,9 +1955,7 @@ class AdminModel {
 
   static async getDisposition(req,res,next){
     try {
-
-      const _id = req.authData._id
-       const all_disposition = await dispositions.find({display_status : "1", addedBy : _id}).lean()
+       const all_disposition = await dispositions.find({display_status : "1"}).lean()
       if(all_disposition){
         return res.status(200).json({
           success: true,
