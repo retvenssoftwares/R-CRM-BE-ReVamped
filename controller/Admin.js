@@ -1721,7 +1721,7 @@ class AdminModel {
   static async addDisposition(req, res, next) {
     try {
       const _id = req.authData._id
-      if (req.authData.role === "ADMIN") {
+      if (!req.body.display_status && !req.body._id && req.authData.role === "ADMIN") {
         const disposition = dispositions.create({
           name: req.body.name,
           label_color : req.body.label_color,
@@ -1735,7 +1735,7 @@ class AdminModel {
           code: 200,
           data: disposition
         });
-      } else if (req.body.display_status === "0" && req.body.id) {
+      } else if (req.body.display_status === "0" && req.body._id && req.authData.role === "ADMIN") {
         try{
           const update = await dispositions.updateOne({ _id: new mongoose.Types.ObjectId(id) }, { $set: { display_status: "0" } })
           if (update){
@@ -1828,7 +1828,7 @@ class AdminModel {
   static async addDesignation(req, res, next) {
     try {
       const _id = req.authData._id
-      if (req.authData.role === "ADMIN") {
+      if (!req.body.display_status && !req.body._id && req.authData.role === "ADMIN") {
         const designation = designations.create({
           designation: req.body.designation,
           short_code: req.body.short_code,
@@ -1840,7 +1840,7 @@ class AdminModel {
           code: 200,
           data: designation
         });
-      } else if (req.body.display_status === "0" && req.body.id) {
+      } else if (req.body.display_status === "0" && req.body._id && req.authData.role === "ADMIN") {
         try {
           const update = await designations.updateOne({ _id: new mongoose.Types.ObjectId(id) }, { $set: { display_status: "0" } })
 
@@ -1880,7 +1880,7 @@ class AdminModel {
   static async addHotel(req, res, next) {
     try {
       const _id = req.authData._id
-      if (req.authData.role === "ADMIN") {
+      if (!req.body.display_status && !req.body._id && req.authData.role === "ADMIN") {
         const hotels = hotel.create({
           hotel_name: req.body.hotel_name,
           hotel_city : req.body.hotel_city,
@@ -1894,7 +1894,7 @@ class AdminModel {
           code: 200,
           data: hotels
         });
-      } else if (req.body.display_status === "0" && req.body.id) {
+      } else if (req.body.display_status === "0" && req.body._id && req.authData.role === "ADMIN") {
         try {
           const update = await hotel.updateOne({ _id: new mongoose.Types.ObjectId(id) }, { $set: { display_status: "0" } })
 
