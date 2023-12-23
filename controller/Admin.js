@@ -1934,6 +1934,7 @@ class AdminModel {
   static async getDepartMent(req, res, next) {
     try {
       const _id = req.authData._id
+      console.log(req.authData.role)
       const all_department = await departments.find({ display_status: "1"}).lean()
 
       const department = [];
@@ -1945,14 +1946,16 @@ class AdminModel {
               _id: new mongoose.Types.ObjectId(_id),
               created_by: new mongoose.Types.ObjectId(item.addedBy)
             });
-            if (exist) {
+            if (exist && req.authData.role === "AGENT") {
               department.push(item);
+            }else if(req.authData.role === "ADMIN"){
+              const all_department = await departments.find({ display_status: "1", addedBy : new mongoose.Types.ObjectId(_id) }).lean()
+              department.push(all_department)
             }
           })
         );
       }
 
-      
       return res.status(200).json({
         success: true,
         code: 200,
@@ -1983,8 +1986,11 @@ class AdminModel {
               _id: new mongoose.Types.ObjectId(_id),
               created_by: new mongoose.Types.ObjectId(item.addedBy)
             });
-            if (exist) {
+            if (exist && req.authData.role === "AGENT") {
               disposition.push(item);
+            }else if(req.authData.role === "ADMIN"){
+              const all_department = await dispositions.find({ display_status: "1", addedBy : new mongoose.Types.ObjectId(_id) }).lean()
+              disposition.push(all_department)
             }
           })
         );
@@ -2021,8 +2027,11 @@ class AdminModel {
               _id: new mongoose.Types.ObjectId(_id),
               created_by: new mongoose.Types.ObjectId(item.addedBy)
             });
-            if (exist) {
+            if (exist && req.authData.role === "AGENT") {
               designation.push(item);
+            }else if(req.authData.role === "ADMIN"){
+              const all_designation = await designations.find({ display_status: "1", addedBy : new mongoose.Types.ObjectId(_id) }).lean()
+              designation.push(all_designation)
             }
           })
         );
@@ -2056,8 +2065,11 @@ class AdminModel {
               _id: new mongoose.Types.ObjectId(_id),
               created_by: new mongoose.Types.ObjectId(item.addedBy)
             });
-            if (exist) {
+            if (exist && req.authData.role === "AGENT") {
               hotel.push(item);
+            }else if(req.authData.role === "ADMIN"){
+              const all_hotel = await hotel.find({ display_status: "1", addedBy : new mongoose.Types.ObjectId(_id) }).lean()
+              hotel.push(all_hotel)
             }
           })
         );
