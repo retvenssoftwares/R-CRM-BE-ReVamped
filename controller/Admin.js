@@ -1883,6 +1883,8 @@ class AdminModel {
       if (req.authData.role === "ADMIN") {
         const hotels = hotel.create({
           hotel_name: req.body.hotel_name,
+          hotel_city : req.body.hotel_city,
+          pin_code:req.body.pin_code,
           short_code: req.body.short_code,
           addedBy: _id
         })

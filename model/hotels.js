@@ -9,6 +9,16 @@ const hotelSchema = mongoose.Schema(
       default:""
     },
 
+    hotel_city:{
+      type:String,
+      default:""
+    },
+
+    pin_code:{
+      type:String,
+      default:""
+    },
+
     short_code : {
       type:String,
       default:""
