@@ -27,7 +27,7 @@ const call = new mongoose.Schema({
     hang_up_by: { type: String,default:"" },
     guest_status: { type: String,default:"" },
     remark: { type: String,default:"" },
-    purpose_of_travel :{ type: String, enum : ['WEDDING', 'COUPLE','BUSINESS','FAMILY','OTHER'] },
+    purpose_of_travel :{ type: String, enum : ['WEDDING', 'COUPLE','BUSINESS','FAMILY','OTHERS'] },
     departure_date :{ type: String,default:""},
     arrival_date:{ type: String,default:""},
     special_occassion:{ type: String,default:""},
