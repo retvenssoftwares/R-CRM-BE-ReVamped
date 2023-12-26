@@ -1736,9 +1736,9 @@ class AdminModel {
           message : "Data Added",
           data: disposition
         });
-      } else if (req.body.display_status === "0" && req.body._id  && req.authData.role === "ADMIN") {
+      } else if (req.body._id  && req.authData.role === "ADMIN") {
         try {
-          const update = await dispositions.updateOne({ _id: new mongoose.Types.ObjectId(req.body._id) }, { $set: { display_status: "0" } })
+          const update = await dispositions.updateOne({ _id: new mongoose.Types.ObjectId(req.body._id) }, { $set: { display_status: req.body.display_status, name: req.body.name,  label_color: req.body.label_color, priority: req.body.priority, short_code: req.body.short_code} })
           if (update) {
             return res.status(200).json({
               success: true,
@@ -1789,9 +1789,9 @@ class AdminModel {
           data: department
         });
       }
-      if (req.body.display_status === "0" && req.body._id && req.authData.role === "ADMIN") {
+      if (req.body._id && req.authData.role === "ADMIN") {
         try {
-          const update = await departments.updateOne({ _id: new mongoose.Types.ObjectId(req.body._id) }, { $set: { display_status: "0" } })
+          const update = await departments.updateOne({ _id: new mongoose.Types.ObjectId(req.body._id) }, { $set: { display_status: req.body.display_status, department_name: req.body.department_name, short_code: req.body.short_code} })
 
           if (update) {
             return res.status(200).json({
@@ -1842,10 +1842,9 @@ class AdminModel {
           message : "Data added..",
           data: designation
         });
-      } else if (req.body.display_status === "0" && req.body._id && req.authData.role === "ADMIN") {
+      } else if (req.body._id && req.authData.role === "ADMIN") {
         try {
-          const update = await designations.updateOne({ _id: new mongoose.Types.ObjectId(req.body._id) }, { $set: { display_status: "0" } })
-
+          const update = await designations.updateOne({ _id: new mongoose.Types.ObjectId(req.body._id) }, { $set: { display_status: req.body.display_status, designation: req.body.designation, short_code: req.body.short_code}})
           if (update) {
             return res.status(200).json({
               success: true,
@@ -1896,9 +1895,9 @@ class AdminModel {
           code: 200,
           data: hotels
         });
-      } else if (req.body.display_status === "0" && req.body._id && req.authData.role === "ADMIN") {
+      } else if (req.body._id && req.authData.role === "ADMIN") {
         try {
-          const update = await hotel.updateOne({ _id: new mongoose.Types.ObjectId(req.body._id) }, { $set: { display_status: "0" } })
+          const update = await hotel.updateOne({ _id: new mongoose.Types.ObjectId(req.body._id) }, { $set: { display_status: req.body.display_status, hotel_name: req.body.hotel_name,  hotel_city: req.body.hotel_city, pin_code: req.body.pin_code, short_code: req.body.short_code} })
 
           if (update) {
             return res.status(200).json({
