@@ -839,7 +839,21 @@ class AgentModel {
           last_support_by: 1,
           start_time: 1,
           call_date: 1,
-          talktime: 1
+          talktime: 1,
+          type:1,
+          dial_status:1,
+          last_called :1,
+          last_support_by  :1,
+          hang_up_by : 1,
+          guest_status  :1,
+          purpose_of_travel : 1,
+          departure_date : 1,
+          arrival_date :1,
+          special_occassion :1,
+          reservationId : 1,
+          call_back_date_time :1,
+          caller_type : 1,
+          hotel_destination: 1,
         }
       })
       let findCalls = await callDetails.aggregate(condition);
@@ -1381,7 +1395,44 @@ class AgentModel {
 
   //   return res.send(data)
   // }
+  static async updateGuestCalls(req, res, next) {
+    if(req.authData.role === "AGENT"){
+        const data = await callsDetails.updateOne(
+            { _id: new mongoose.Types.ObjectId(req.body._id)},
+            {
+                $set: {
+                    caller_type: req.body.caller_type,
+                    purpose_of_travel: req.body.purpose_of_travel,
+                    departure_date: req.body.departure_date,
+                    arrival_date: req.body.arrival_date,
+                    disposition:req.body.disposition,
+                    remark: req.body.remark,
+                }
+            }
+        )
 
+        if (data) {
+            return res.status(400).json({
+                success: false,
+                code: 400,
+                message: "Invalid data"
+            });
+        }else{
+            return res.status(400).json({
+                success: false,
+                code: 400,
+                message: "Updated successfully"
+            });
+        }
+    }else{
+        return res.status(401).json({
+            success: false,
+            code: 401,
+            message: "Unauthorized Access"
+        });
+    }
+
+}
 
 
 }

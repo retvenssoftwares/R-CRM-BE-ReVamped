@@ -213,11 +213,6 @@ class GuestDeatils {
                 {
                     $unwind: "$guests"
                 },
-                // {
-                //     $match: {
-                //         "guests.date": {$gte: req.query.from , $lte: req.query.to}
-                //     }
-                // },
                 {
                     $lookup: {
                         from: "calling_details",
@@ -299,6 +294,9 @@ class GuestDeatils {
         }
     }
 
+
+    
+   
 
 
 
