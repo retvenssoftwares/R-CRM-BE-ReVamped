@@ -21,7 +21,7 @@ router.patch("/updateAgent",verifyJwt,AgentModel.updateAgent)
 router.get("/getPauseReasons",Agent.GetPauseReason)
 router.patch("/updateCalls",verifyJwt,Agent.updateGuestCalls)         
 // router.get("/getLead",verifyJwt,Agent.Leads)
-
+  
 
 
 

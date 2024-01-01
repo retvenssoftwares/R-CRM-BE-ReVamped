@@ -774,6 +774,17 @@ class AgentModel {
         },
         {
           $unwind: "$guest",
+        },
+        {
+          $lookup :{
+            from: "dispositions",
+            localField: "disposition",
+            foreignField: "_id",
+            as: "dispositionDetails", 
+          }
+        },
+        {
+          $unwind : "$dispositionDetails"
         }
       ];
 
@@ -835,7 +846,8 @@ class AgentModel {
           caller_id: "$guest.guest_mobile_number",
           location: "$hotel_destination",
           agent_id: 1,
-          disposition: 1,
+          disposition: "$dispositionDetails.name",
+          disposition_id: "$dispositionDetails._id",
           last_support_by: 1,
           start_time: 1,
           call_date: 1,
@@ -854,6 +866,16 @@ class AgentModel {
           call_back_date_time :1,
           caller_type : 1,
           hotel_destination: 1,
+          guest_mobile_number : "$guest.guest_mobile_number",
+          guest_email : "$guest.guest_email",
+          hotel_name : 1,
+          guest_address_1 : "$guest.guest_address_1",
+          remark : 1,
+          city : "$guest.city",
+          state : "$guest.state",
+          country : "$guest.country",
+          zip_code : "$guest.zip_code",
+          salutation : "$guest.salutation",
         }
       })
       let findCalls = await callDetails.aggregate(condition);
@@ -1397,7 +1419,7 @@ class AgentModel {
   // }
   static async updateGuestCalls(req, res, next) {
     if(req.authData.role === "AGENT"){
-        const data = await callsDetails.updateOne(
+        const data = await callDetails.updateOne(
             { _id: new mongoose.Types.ObjectId(req.body._id)},
             {
                 $set: {
@@ -1405,23 +1427,23 @@ class AgentModel {
                     purpose_of_travel: req.body.purpose_of_travel,
                     departure_date: req.body.departure_date,
                     arrival_date: req.body.arrival_date,
-                    disposition:req.body.disposition,
+                    disposition: req.body.disposition,
                     remark: req.body.remark,
                 }
             }
         )
 
         if (data) {
-            return res.status(400).json({
-                success: false,
-                code: 400,
-                message: "Invalid data"
+            return res.status(200).json({
+                success: true,
+                code: 200,
+                message: "Success.."
             });
         }else{
             return res.status(400).json({
                 success: false,
                 code: 400,
-                message: "Updated successfully"
+                message: "Invalid data"
             });
         }
     }else{
