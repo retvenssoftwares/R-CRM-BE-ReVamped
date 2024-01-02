@@ -662,7 +662,7 @@ class AgentModel {
         }
 
         if (req.query.type === "MONTH") {
-          endDate = JSON.stringify(new Date(currentDate.setUTCHours(0, 0, 0, 0) - 7 * 24 * 60 * 60 * 999.99)).split("T")[0].slice(1);
+          endDate = JSON.stringify(new Date(currentDate.setUTCHours(0, 0, 0, 0) - 30 * 24 * 60 * 60 * 999.99)).split("T")[0].slice(1);
         }
        
         condition.push({
