@@ -1123,6 +1123,7 @@ class AdminModel {
       data: findDisposition,
     });
   }
+
   static async CallsCurrentDate(req, res, next) {
     try {
       const admin_id = req.authData?._id;
@@ -1146,7 +1147,25 @@ class AdminModel {
           },
         },
         {
-          $unwind: "$guest",
+          $unwind: {path : "$guest", 
+          preserveNullAndEmptyArrays : false}
+        },
+        {
+          $lookup: {
+            from: "dispositions",
+            localField: "disposition",
+            foreignField: "_id",
+            as: "disposition_details",
+          },
+        },
+        {
+          $unwind: {path : "$disposition_details", 
+          preserveNullAndEmptyArrays : false}
+        },
+        {
+          $match : {
+            "disposition_details.name" : "Reservation"
+          }
         },
         {
           $addFields: {

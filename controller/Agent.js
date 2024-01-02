@@ -131,7 +131,7 @@ class AgentModel {
 
           let newCalls = await callDetails.create({
             agent_id,
-            guest_id : newuser.findGuest._id,
+            guest_id: newuser.findGuest._id,
             call_date: JSON.stringify(new Date()).split("T")[0].slice(1),
             call_time: new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }).split(",")[1],
             caller_type,
@@ -408,9 +408,9 @@ class AgentModel {
       }))
 
       const avgCallTimeIncoming = sumCallTimeIncoming / CallTimeIncoming.length;
-     
+
       const avgCallTimeOutgoing = sumCallTimeOutgoing / CallTimeOutgoing.length;
-     
+
       let data1 = [
         {
           type: "Total Calls",
@@ -652,43 +652,30 @@ class AgentModel {
   static async dispositionGraph(req, res, next) {
     try {
       let currentDate = req.query.date ? new Date(req.query.date) : new Date();
-      let condition = [{ $match: {} }];
+      let condition = [];
       if (req.query.type) {
-        let startDate = JSON.stringify(new Date()).split("T")[0].slice(1);
+        let startDate = JSON.stringify(new Date(currentDate)).split("T")[0].slice(1);
         let endDate;
 
         if (req.query.type === "WEEK") {
-          endDate =
-            currentDate.setUTCHours(0, 0, 0, 0) - 7 * 24 * 60 * 60 * 999.99;
+          endDate = JSON.stringify(new Date(currentDate.setUTCHours(0, 0, 0, 0) - 7 * 24 * 60 * 60 * 999.99)).split("T")[0].slice(1);
         }
 
         if (req.query.type === "MONTH") {
-          endDate =
-            currentDate.setUTCHours(0, 0, 0, 0) - 30 * 24 * 60 * 60 * 999.99;
+          endDate = JSON.stringify(new Date(currentDate.setUTCHours(0, 0, 0, 0) - 7 * 24 * 60 * 60 * 999.99)).split("T")[0].slice(1);
         }
-
-        condition.unshift({
+       
+        condition.push({
           $match: {
             $and: [
               { call_date: { $lte: startDate } },
               { call_date: { $gte: endDate } },
             ],
           },
-        }, {
-          $lookup: {
-            from: "users",
-            localField: "assigned_to",
-            foreignField: "_id",
-            as: "assigened_user",
-          },
         },
-          {
-            $unwind: {
-              path: "$assigened_user",
-              preserveNullAndEmptyArrays: false,
-            },
-          },);
+        )
       }
+
 
       if (req.authData.role === "ADMIN") {
         condition.unshift({
@@ -709,32 +696,30 @@ class AgentModel {
         });
       }
 
+
+
       let findCalls = await callDetails.aggregate(condition);
 
+      
       let result = findCalls.reduce((obj, itm) => {
         obj[itm.disposition] = obj[itm.disposition] + 1 || 1;
         return obj;
       }, {});
+      // console.log(result);
 
-      let findDisposition = await Disposition.find().lean();
-
-      await findDisposition.map(async (e) => {
-        let findKeys = Object.keys(result).find((el) => {
-          return el == e.name;
-        })
-          ? true
-          : false;
-
-        if (!findKeys) {
-          result[e.name] = 0;
-        }
-      });
+      const data = await Promise.all(Object.keys(result).map(async (despositionId) => {
+         const dispositionDetail = await Disposition.findOne({_id : despositionId});
+         return {
+           name  : dispositionDetail.name,
+           count : result[despositionId]
+         }
+      }))
 
       return res.status(200).json({
         status: true,
         code: 200,
         message: "Details....",
-        data: result,
+        data: data,
       });
     } catch (error) {
       return res.status(500).json({
@@ -776,15 +761,15 @@ class AgentModel {
           $unwind: "$guest",
         },
         {
-          $lookup :{
+          $lookup: {
             from: "dispositions",
             localField: "disposition",
             foreignField: "_id",
-            as: "dispositionDetails", 
+            as: "dispositionDetails",
           }
         },
         {
-          $unwind : "$dispositionDetails"
+          $unwind: "$dispositionDetails"
         }
       ];
 
@@ -852,30 +837,30 @@ class AgentModel {
           start_time: 1,
           call_date: 1,
           talktime: 1,
-          type:1,
-          dial_status:1,
-          last_called :1,
-          last_support_by  :1,
-          hang_up_by : 1,
-          guest_status  :1,
-          purpose_of_travel : 1,
-          departure_date : 1,
-          arrival_date :1,
-          special_occassion :1,
-          reservationId : 1,
-          call_back_date_time :1,
-          caller_type : 1,
+          type: 1,
+          dial_status: 1,
+          last_called: 1,
+          last_support_by: 1,
+          hang_up_by: 1,
+          guest_status: 1,
+          purpose_of_travel: 1,
+          departure_date: 1,
+          arrival_date: 1,
+          special_occassion: 1,
+          reservationId: 1,
+          call_back_date_time: 1,
+          caller_type: 1,
           hotel_destination: 1,
-          guest_mobile_number : "$guest.guest_mobile_number",
-          guest_email : "$guest.guest_email",
-          hotel_name : 1,
-          guest_address_1 : "$guest.guest_address_1",
-          remark : 1,
-          city : "$guest.city",
-          state : "$guest.state",
-          country : "$guest.country",
-          zip_code : "$guest.zip_code",
-          salutation : "$guest.salutation",
+          guest_mobile_number: "$guest.guest_mobile_number",
+          guest_email: "$guest.guest_email",
+          hotel_name: 1,
+          guest_address_1: "$guest.guest_address_1",
+          remark: 1,
+          city: "$guest.city",
+          state: "$guest.state",
+          country: "$guest.country",
+          zip_code: "$guest.zip_code",
+          salutation: "$guest.salutation",
         }
       })
       let findCalls = await callDetails.aggregate(condition);
@@ -1284,7 +1269,7 @@ class AgentModel {
 
     if (req.authData.role === "ADMIN") {
       const { _id, name, gender, date_of_birth, contact, email, department, designation, password, displayStatus } = req.body;
-    
+
 
       if (!_id) {
         return res.status(401).json({
@@ -1307,7 +1292,7 @@ class AgentModel {
         let updateFields = {
           name: name,
           email: email,
-          displayStatus : displayStatus,
+          displayStatus: displayStatus,
           phone_number: contact,
           designation: designation,
           department: department,
@@ -1418,43 +1403,43 @@ class AgentModel {
   //   return res.send(data)
   // }
   static async updateGuestCalls(req, res, next) {
-    if(req.authData.role === "AGENT"){
-        const data = await callDetails.updateOne(
-            { _id: new mongoose.Types.ObjectId(req.body._id)},
-            {
-                $set: {
-                    caller_type: req.body.caller_type,
-                    purpose_of_travel: req.body.purpose_of_travel,
-                    departure_date: req.body.departure_date,
-                    arrival_date: req.body.arrival_date,
-                    disposition: req.body.disposition,
-                    remark: req.body.remark,
-                }
-            }
-        )
-
-        if (data) {
-            return res.status(200).json({
-                success: true,
-                code: 200,
-                message: "Success.."
-            });
-        }else{
-            return res.status(400).json({
-                success: false,
-                code: 400,
-                message: "Invalid data"
-            });
+    if (req.authData.role === "AGENT") {
+      const data = await callDetails.updateOne(
+        { _id: new mongoose.Types.ObjectId(req.body._id) },
+        {
+          $set: {
+            caller_type: req.body.caller_type,
+            purpose_of_travel: req.body.purpose_of_travel,
+            departure_date: req.body.departure_date,
+            arrival_date: req.body.arrival_date,
+            disposition: req.body.disposition,
+            remark: req.body.remark,
+          }
         }
-    }else{
-        return res.status(401).json({
-            success: false,
-            code: 401,
-            message: "Unauthorized Access"
+      )
+
+      if (data) {
+        return res.status(200).json({
+          success: true,
+          code: 200,
+          message: "Success.."
         });
+      } else {
+        return res.status(400).json({
+          success: false,
+          code: 400,
+          message: "Invalid data"
+        });
+      }
+    } else {
+      return res.status(401).json({
+        success: false,
+        code: 401,
+        message: "Unauthorized Access"
+      });
     }
 
-}
+  }
 
 
 }
