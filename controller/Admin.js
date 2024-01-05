@@ -1672,6 +1672,7 @@ class AdminModel {
 
     if (req.authData.role === 'ADMIN') {
       const adminId = req.authData._id; // Assuming admin's _id is available in req.authData
+      const {from, to} = req.query
       let pipeline = [
         {
           $match: {
@@ -1691,7 +1692,12 @@ class AdminModel {
         },
         {
           $match: {
-            "guests.date": { $gte: req.query.from, $lte: req.query.to }
+            ...(from && to ?{
+              "guests.date": {
+                  $gte:from,
+                  $lte:to
+              }
+          }:{})
           }
         },
         {
