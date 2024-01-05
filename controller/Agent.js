@@ -482,9 +482,6 @@ class AgentModel {
               {
                 call_date: JSON.stringify(new Date()).split("T")[0].slice(1),
               },
-              {
-                department: "RESERVATION",
-              },
             ],
           },
         },
@@ -572,15 +569,9 @@ class AgentModel {
         // Your existing pipeline stages
         {
           $match: {
-            $and: [
-              {
-                agent_id: new mongoose.Types.ObjectId(req.authData._id),
-              },
-              {
-                department: "RESERVATION",
-              },
-            ],
+            agent_id: new mongoose.Types.ObjectId(req.authData._id),
           },
+
         },
         {
           $lookup: {
@@ -616,6 +607,7 @@ class AgentModel {
             hotel_name: 1,
             guest_first_name: "$guest.guest_first_name",
             guest_last_name: "$guest.guest_last_name",
+            disposition_name : "$disposition_info.name",
             arrival_date: 1,
           },
         },
@@ -625,13 +617,14 @@ class AgentModel {
         let dispositionId = req.query.disposition;
         condition.unshift({
           $match: {
+            
             disposition: new mongoose.Types.ObjectId(dispositionId),
           },
         });
       }
 
       let findCall = await callDetails.aggregate(condition);
-
+  
 
       return res.status(200).json({
         status: true,
@@ -664,7 +657,7 @@ class AgentModel {
         if (req.query.type === "MONTH") {
           endDate = JSON.stringify(new Date(currentDate.setUTCHours(0, 0, 0, 0) - 30 * 24 * 60 * 60 * 999.99)).split("T")[0].slice(1);
         }
-       
+
         condition.push({
           $match: {
             $and: [
@@ -700,7 +693,7 @@ class AgentModel {
 
       let findCalls = await callDetails.aggregate(condition);
 
-      
+
       let result = findCalls.reduce((obj, itm) => {
         obj[itm.disposition] = obj[itm.disposition] + 1 || 1;
         return obj;
@@ -708,11 +701,11 @@ class AgentModel {
       // console.log(result);
 
       const data = await Promise.all(Object.keys(result).map(async (despositionId) => {
-         const dispositionDetail = await Disposition.findOne({_id : despositionId});
-         return {
-           name  : dispositionDetail.name,
-           count : result[despositionId]
-         }
+        const dispositionDetail = await Disposition.findOne({ _id: despositionId });
+        return {
+          name: dispositionDetail.name,
+          count: result[despositionId]
+        }
       }))
 
       return res.status(200).json({
@@ -906,6 +899,7 @@ class AgentModel {
       }
 
       let findHotelDestination = await callDetails.aggregate(condition);
+
 
       const unique = findHotelDestination.reduce((acc, curr) => {
         const matchingNode = acc.find(

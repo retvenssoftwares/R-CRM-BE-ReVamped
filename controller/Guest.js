@@ -119,9 +119,7 @@ class GuestDeatils {
 
     static async getAllGuestDetails(req, res, next) {
         let findCalls;
-
         if (req.authData.role === 'ADMIN') {
-            console.log(req.authData._id)
             const adminId = req.authData._id; // Assuming admin's _id is available in req.authData
             let pipeline = [
                 {
@@ -141,11 +139,11 @@ class GuestDeatils {
                 {
                     $unwind: "$guests"
                 },
-                // {
-                //     $match: {
-                //         "guests.date": {$gte: req.query.from , $lte: req.query.to}
-                //     }
-                // },
+                {
+                    $match: {
+                        "guests.date": {$gte: req.query.from , $lte: req.query.to}
+                    }
+                },
                 {
                     $lookup: {
                         from: "calling_details",
@@ -194,7 +192,6 @@ class GuestDeatils {
                 });
             }
         } else if (req.authData.role === 'AGENT') {
-            console.log("gvhbjnk")
             const agentId = req.authData._id;
             let pipeline = [
                 {
