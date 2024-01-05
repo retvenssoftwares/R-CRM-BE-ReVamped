@@ -119,7 +119,6 @@ class GuestDeatils {
 
     static async getAllGuestDetails(req, res, next) {
         let findCalls;
-
         if (req.authData.role === 'ADMIN') {
             const{from, to} = req.query
 

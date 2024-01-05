@@ -1234,20 +1234,23 @@ class AdminModel {
           },
         },
         {
-          $match: {
-            department: "RESERVATION",
+          $lookup: {
+            from: "dispositions",
+            localField: "disposition",
+            foreignField: "_id",
+            as: "disposition_details",
           },
         },
         {
-          $group: {
-            _id: "$admin_id",
-            count: { $sum: 1 },
+          $match: {
+            "disposition_details.name": "Reservation",
           },
         },
+        
         {
           $lookup: {
             from: "users",
-            localField: "_id",
+            localField: "agent_id",
             foreignField: "_id",
             as: "user",
           },
@@ -1256,11 +1259,12 @@ class AdminModel {
           $unwind: "$user",
         },
         {
-          $project: {
-            name: "$user.name",
-            count: 1,
-          },
-        },
+          $group: {
+            _id: "$user._id",
+            name: { $first: "$user.name" },
+            count: { $sum: 1 },
+          }
+        }
       ];
 
       if (req.query.hotel_name) {
@@ -1298,21 +1302,24 @@ class AdminModel {
             admin_id: new mongoose.Types.ObjectId(admin_id),
           },
         },
+         {
+          $lookup: {
+            from: "dispositions",
+            localField: "disposition",
+            foreignField: "_id",
+            as: "disposition_details",
+          },
+        },
         {
           $match: {
-            department: "RESERVATION",
+            "disposition_details.name": "Reservation",
           },
         },
-        {
-          $group: {
-            _id: "$admin_id",
-            count: { $sum: 1 },
-          },
-        },
+        
         {
           $lookup: {
             from: "users",
-            localField: "_id",
+            localField: "agent_id",
             foreignField: "_id",
             as: "user",
           },
@@ -1321,11 +1328,12 @@ class AdminModel {
           $unwind: "$user",
         },
         {
-          $project: {
-            name: "$user.name",
-            count: 1,
-          },
-        },
+          $group: {
+            _id: "$user._id",
+            name: { $first: "$user.name" },
+            count: { $sum: 1 },
+          }
+        }
       ];
 
       if (req.query.hotel_name) {
