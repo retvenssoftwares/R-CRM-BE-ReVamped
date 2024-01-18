@@ -16,6 +16,7 @@ router.post('/verify-otp', AdminModel.VerifyOtpBeforeResetPassword);
 router.post('/update-password',verifyJwt, AdminModel.UpdatePassword);
 router.post('/create_user',verifyJwt, AdminModel.AddUser);
 router.get('/get_disposition',verifyJwt,AdminModel.getDisposition)
+router.get('/dispositions',verifyJwt,AdminModel.getDisposition1)
 router.get('/call_details',verifyJwt,AdminModel.CallDetailAll)
 
 

@@ -602,6 +602,13 @@ class AgentModel {
         {
           $unwind: "$disposition_info",
         },
+          {
+          $match: {
+            "disposition_info.name": {
+              $nin: ["Spam", "Cancellation"]
+            }
+          }
+        },
         {
           $project: {
             hotel_name: 1,

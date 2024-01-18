@@ -1124,6 +1124,28 @@ class AdminModel {
     });
   }
 
+  static async getDisposition1(req, res, next) {
+    // let findDisposition = await dispositions.find({});
+    let findDisposition = await dispositions.find({
+      "name": { $nin: ["Spam", "Cancellation"] }
+    });
+    
+
+    if (!findDisposition) {
+      return res.status(401).json({
+        status: false,
+        code: 401,
+        message: "Data not found",
+      });
+    }
+    return res.status(200).json({
+      status: true,
+      code: 200,
+      message: "Data Fetched successfully",
+      data: findDisposition,
+    });
+  }
+
   static async CallsCurrentDate(req, res, next) {
     try {
       const admin_id = req.authData?._id;
