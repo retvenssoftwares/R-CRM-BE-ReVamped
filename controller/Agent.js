@@ -470,7 +470,7 @@ class AgentModel {
     }
   }
 
-  static async TodayConversions(req, res, next) {
+  static async TodayConversions1(req, res, next) {
     try {
       let condition = [
         {
@@ -562,6 +562,131 @@ class AgentModel {
       });
     }
   }
+
+  static async TodayConversions(req, res, next) {
+    try {
+      let condition = [
+        {
+          $match: {
+            $and: [
+              {
+                agent_id: new mongoose.Types.ObjectId(req.authData._id),
+              },
+              {
+                call_date: JSON.stringify(new Date()).split("T")[0].slice(1),
+              },
+            ],
+          },
+        },
+        {
+          $lookup: {
+            from: "guest_details",
+            localField: "guest_id",
+            foreignField: "_id",
+            as: "guest",
+          },
+        },
+        {
+          $unwind: "$guest",
+        },
+        {
+          $addFields: {
+            startDate: {
+              $cond: {
+                if: {
+                  $and: [
+                    { $ne: ["$arrival_date", ""] },
+                    { $type: "$arrival_date" }
+                  ]
+                },
+                then: {
+                  $dateFromString: {
+                    dateString: "$arrival_date"
+                  }
+                },
+                else: null
+              }
+            },
+            endDate: {
+              $cond: {
+                if: {
+                  $and: [
+                    { $ne: ["$departure_date", ""] },
+                    { $type: "$departure_date" }
+                  ]
+                },
+                then: {
+                  $dateFromString: {
+                    dateString: "$departure_date"
+                  }
+                },
+                else: null
+              }
+            }
+          }
+        },
+        {
+          $addFields: {
+            noOfNights: {
+              $cond: {
+                if: {
+                  $and: [
+                    { $ne: ["$startDate", null] },
+                    { $ne: ["$endDate", null] }
+                  ]
+                },
+                then: {
+                  $divide: [
+                    { $subtract: ["$endDate", "$startDate"] },
+                    1000 * 60 * 60 * 24
+                  ]
+                },
+                else: null
+              }
+            }
+          }
+        },
+        {
+          $project: {
+            hotel_name: 1,
+            guest_name: "$guest.guest_first_name",
+            guest_last_name: "$guest.guest_last_name",
+            noOfNights: 1
+          },
+        },
+        {
+          $sort: {
+            _id: -1,
+          },
+        },
+      ];
+  
+      if (req.query.hotel_name) {
+        let hotelName = req.query.hotel_name.replaceAll("_", " ");
+        condition.unshift({
+          $match: {
+            hotel_name: hotelName,
+          },
+        });
+      }
+  
+      let findCall = await callDetails.aggregate(condition);
+  
+      return res.status(200).json({
+        status: true,
+        code: 200,
+        message: "Details....",
+        data: findCall,
+      });
+    } catch (error) {
+      return res.status(500).json({
+        status: false,
+        code: 500,
+        message: error.message,
+      });
+    }
+  }
+  
 
   static async PendingFollowUp(req, res, next) {
     try {
@@ -882,7 +1007,10 @@ class AgentModel {
   static async hotelDestinationList(req, res, next) {
     try {
       let condition = [
-        { $match: {} },
+        { $match: {
+          hotel_destination: { $exists: true, $ne: "" }
+        } 
+      },
         {
           $project: {
             hotel_destination: 1,
@@ -904,9 +1032,7 @@ class AgentModel {
           },
         });
       }
-
       let findHotelDestination = await callDetails.aggregate(condition);
-
 
       const unique = findHotelDestination.reduce((acc, curr) => {
         const matchingNode = acc.find(
