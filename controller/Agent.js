@@ -12,6 +12,7 @@ import log_in_log_out_time from "../model/LoginAndLogOut.js"
 import { seedPauesReasons } from "../utils/seeder.js";
 import pause_call_dropDown from "../model/PauseDropDown.js";
 import { formatTime } from "../utils/formattime.js";
+import hotel from "../model/hotels.js"
 class AgentModel {
   static async GuestInfo(req, res, next) {
     const { phone_number } = req.body;
@@ -1006,53 +1007,42 @@ class AgentModel {
   }
   static async hotelNameList(req, res, next) {
     try {
-      let condition = [
-        { $match: {} },
-        {
-          $project: {
-            hotel_name: 1,
-          },
-        },
-      ];
-      if (req.authData.role === "ADMIN") {
-        condition.unshift({
-          $match: {
-            admin_id: new mongoose.Types.ObjectId(req.authData._id),
-          },
-        });
-      }
+      const _id = req.authData._id
+      const all_hotel = await hotel.find({ display_status: "1"}).lean()
+      const hotels = [];
 
-      if (req.authData.role === "AGENT") {
-        condition.unshift({
-          $match: {
-            agent_id: new mongoose.Types.ObjectId(req.authData._id),
-          },
-        });
-      }
-
-      let findHotelDestination = await callDetails.aggregate(condition);
-
-      const unique = findHotelDestination.reduce((acc, curr) => {
-        const matchingNode = acc.find(
-          (node) => node.hotel_name === curr.hotel_name
+      if (all_hotel && req.authData.role === "AGENT") {
+        await Promise.all(
+          all_hotel.map(async (item) => {
+            const exist = await User.findOne({
+              _id: new mongoose.Types.ObjectId(_id),
+              created_by: new mongoose.Types.ObjectId(item.addedBy)
+            });
+            if (exist && req.authData.role === "AGENT") {
+              hotels.push(item);
+            }
+          })
         );
-        if (!matchingNode) {
-          acc.push(curr);
-        }
-        return acc;
-      }, []);
-
+      }else if(req.authData.role === "ADMIN"){
+        const all_hotel = await hotel.find({ display_status: "1", addedBy : new mongoose.Types.ObjectId(_id) }).lean()
+        hotels.push(all_hotel)
+        return res.status(200).json({
+          success: true,
+          code: 200,
+          data: [].concat(...hotels),
+        });
+      }
+ 
       return res.status(200).json({
-        status: true,
+        success: true,
         code: 200,
-        message: "Details....",
-        data: unique,
+        data: hotels,
       });
-    } catch (error) {
+    } catch (err) {
       return res.status(500).json({
-        status: false,
+        success: false,
         code: 500,
-        message: error.message,
+        error: err.message
       });
     }
   }
