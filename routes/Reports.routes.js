@@ -16,4 +16,5 @@ router.get("/getCallHealthReport", verifyJwt, report.getCallHealthReport);
 router.get("/agentLoginTime", verifyJwt, report.agentLoginTime);
 router.get("/callDataAnalysis", verifyJwt, report.callDataAnalysis)
 router.get("/dispositionAnalysis", verifyJwt, report.dispositionAnalysis)
+router.get("/callSummary", verifyJwt, report.callSummary)
 export default router;

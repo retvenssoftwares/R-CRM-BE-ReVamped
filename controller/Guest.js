@@ -17,7 +17,7 @@ class GuestDeatils {
 
         let findCalls = await Guest.aggregate([{
             $match: {
-                guest_mobile_number: guest_mobile_number // Replace with the actual guestId you want to match
+                guest_mobile_number: guest_mobile_number
             }
         },
         {
@@ -29,12 +29,12 @@ class GuestDeatils {
             }
         },
         {
-            $unwind: "$calls_info" // Corrected field name to "calls_info"
+            $unwind: "$calls_info" 
         },
         {
             $lookup: {
                 from: "dispositions",
-                localField: "calls_info.disposition", // Assuming this is correct
+                localField: "calls_info.disposition",
                 foreignField: "_id",
                 as: "disposition"
             }
@@ -68,7 +68,7 @@ class GuestDeatils {
                     "country": "$country",
                     "alternate_contact": "$alternate_contact",
                     "createdAt": "$createdAt",
-                    "zip_code":"$zip_code",
+                    "zip_code": "$zip_code",
                     "updatedAt": "$updatedAt",
 
                 },
@@ -120,7 +120,7 @@ class GuestDeatils {
     static async getAllGuestDetails(req, res, next) {
         let findCalls;
         if (req.authData.role === 'ADMIN') {
-            const{from, to} = req.query
+            const { from, to } = req.query
 
             const adminId = req.authData._id; // Assuming admin's _id is available in req.authData
             let pipeline = [
@@ -143,12 +143,12 @@ class GuestDeatils {
                 },
                 {
                     $match: {
-                        ...(from && to ?{
+                        ...(from && to ? {
                             "guests.date": {
-                                $gte:from,
-                                $lte:to
+                                $gte: from,
+                                $lte: to
                             }
-                        }:{})
+                        } : {})
                     }
                 },
                 {
@@ -185,6 +185,7 @@ class GuestDeatils {
             ];
             try {
                 findCalls = await User.aggregate(pipeline);
+                // console.log('findCalls: ', findCalls.length);
                 return res.status(200).json({
                     success: true,
                     code: 200,
@@ -200,7 +201,7 @@ class GuestDeatils {
             }
         } else if (req.authData.role === 'AGENT') {
             const agentId = req.authData._id;
-            const{from, to} = req.query
+            const { from, to } = req.query
             let pipeline = [
                 {
                     $match: {
@@ -220,12 +221,12 @@ class GuestDeatils {
                 },
                 {
                     $match: {
-                        ...(from && to ?{
+                        ...(from && to ? {
                             "guests.date": {
-                                $gte:from,
-                                $lte:to
+                                $gte: from,
+                                $lte: to
                             }
-                        }:{})
+                        } : {})
                     }
                 },
                 {
@@ -264,6 +265,7 @@ class GuestDeatils {
             try {
                 // findCalls = await Guest.find({ agent_id: req.authData._id }).lean();
                 findCalls = await User.aggregate(pipeline);
+                // console.log('findCalls: ', findCalls.length);
                 return res.status(200).json({
                     success: true,
                     code: 200,
@@ -288,8 +290,8 @@ class GuestDeatils {
                     guest_first_name: req.body.guest_first_name,
                     guest_last_name: req.body.guest_last_name,
                     guest_mobile_number: req.body.guest_mobile_number,
-                    guest_email : req.body.guest_email,
-                    zip_code:req.body.zip_code,
+                    guest_email: req.body.guest_email,
+                    zip_code: req.body.zip_code,
                     state: req.body.state,
                     city: req.body.city,
                     country: req.body.country,
@@ -310,8 +312,8 @@ class GuestDeatils {
     }
 
 
-    
-   
+
+
 
 
 

@@ -67,13 +67,22 @@ class AdminModel {
 
       if (findUser.role === "AGENT") {
         const log_in_time = new Date();
+        const formattedDate = `${log_in_time.getFullYear()}-${(log_in_time.getMonth() + 1)
+          .toString()
+          .padStart(2, '0')}-${log_in_time.getDate().toString().padStart(2, '0')} ${log_in_time
+          .getHours()
+          .toString()
+          .padStart(2, '0')}:${log_in_time.getMinutes().toString().padStart(2, '0')}:${log_in_time
+          .getSeconds()
+          .toString()
+          .padStart(2, '0')}`;
 
         await login_logout.updateOne(
           { agent_id: findUser._id },
           {
             $push: {
               log_in_log_out_time: {
-                $each: [{ log_in_time: log_in_time, log_out_time: "" }],
+                $each: [{ log_in_time: formattedDate, log_out_time: "" }],
                 $position: 0,
               },
             },
@@ -967,7 +976,7 @@ class AdminModel {
         let firstDayOfMonth;
         let lastDayOfMonth;
 
-        if (req.query.type === "MONTHLY") {
+        if (req.query.type === "MONTH") {
           firstDayOfMonth = new Date(
             currentDate.getFullYear(),
             currentDate.getMonth() - i,
@@ -978,7 +987,7 @@ class AdminModel {
             currentDate.getMonth() - i + 1,
             0
           );
-        } else if (req.query.type === "WEEKLY") {
+        } else if (req.query.type === "WEEK") {
           firstDayOfMonth = new Date(
             currentDate.getFullYear(),
             currentDate.getMonth(),
@@ -1072,7 +1081,7 @@ class AdminModel {
           });
         }
         const d = await CallDetail.aggregate(pipeline);
-        if (req.query.type === "WEEKLY") {
+        if (req.query.type === "WEEK") {
           result.push({
             type: lastDayOfMonth.toLocaleString("default", {
               month: "short",

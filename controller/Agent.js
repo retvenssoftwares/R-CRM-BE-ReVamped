@@ -110,7 +110,7 @@ class AgentModel {
             talktime,
             time_to_answer,
             type,
-            callback_time_date,
+            call_back_date_time,
             dial_status,
             last_called,
             last_support_by,
@@ -143,7 +143,7 @@ class AgentModel {
             admin_id: req?.authData?.admin_id,
             time_to_answer,
             type,
-            callback_time_date,
+            call_back_date_time,
             dial_status,
             last_called,
             last_support_by,
@@ -180,9 +180,6 @@ class AgentModel {
         guest_id = newuser._id;
       }
 
-
-
-
       let agent_id = req.authData._id;
       const {
         caller_type,
@@ -192,7 +189,7 @@ class AgentModel {
         talktime,
         time_to_answer,
         type,
-        callback_time_date,
+        call_back_date_time,
         dial_status,
         last_called,
         last_support_by,
@@ -227,7 +224,7 @@ class AgentModel {
         admin_id: req?.authData?.admin_id,
         time_to_answer,
         type,
-        callback_time_date,
+        call_back_date_time,
         dial_status,
         last_called,
         last_support_by,
@@ -691,6 +688,7 @@ class AgentModel {
       let condition = [];
       if (req.query.type) {
         let startDate = JSON.stringify(new Date(currentDate)).split("T")[0].slice(1);
+        // console.log('startDate: ', startDate);
         let endDate;
 
         if (req.query.type === "WEEK") {
@@ -700,7 +698,7 @@ class AgentModel {
         if (req.query.type === "MONTH") {
           endDate = JSON.stringify(new Date(currentDate.setUTCHours(0, 0, 0, 0) - 30 * 24 * 60 * 60 * 999.99)).split("T")[0].slice(1);
         }
-
+        // console.log('endDate: ', endDate);
         condition.push({
           $match: {
             $and: [
@@ -711,7 +709,7 @@ class AgentModel {
         },
         )
       }
-
+      // console.log(req.authData._id, "safdwd");
 
       if (req.authData.role === "ADMIN") {
         condition.unshift({
@@ -731,8 +729,6 @@ class AgentModel {
           },
         });
       }
-
-
 
       let findCalls = await callDetails.aggregate(condition);
 
@@ -971,40 +967,79 @@ class AgentModel {
 
   static async Pause(req, res, next) {
     try {
-      const { pause_reason, agent_id, resume_time, pause_time } = req.body
+      const { pause_reason, agent_id, resume_time, pause_time, type, _id } = req.body
 
-      // if(!pause_reason && !resume_time){
-      //   return res.status(401).json({
-      //     status: false,
-      //     code: 401,
-      //     data: "data id missing",
-      //   });
-      // }
-
-      if (!agent_id) {
+      if (!type) {
         return res.status(401).json({
           status: false,
           code: 401,
-          data: "agent id is missing",
+          data: "Please mention type as Pause or Resume",
         });
       }
 
+
+
       const reasons = await pause_call_dropDown.findOne({ _id: pause_reason });
 
-      const pauseCall = new PauseCall({
-        agent_id: agent_id,
-        pause_reason: reasons?.pause_reason,
-        pause_time: pause_time,
-        resume_time: resume_time,
-      });
+      let pauseCall;
 
-      await pauseCall.save();
+      if (req.body.type === "Pause") {
 
-      return res.status(200).json({
-        status: true,
-        code: 200,
-        data: "Pause reasons added..",
-      });
+        if (!agent_id) {
+          return res.status(401).json({
+            status: false,
+            code: 401,
+            data: "agent id is missing",
+          });
+        }
+
+        pauseCall = new PauseCall({
+          agent_id: agent_id,
+          pause_reason: reasons?.pause_reason,
+          pause_time: pause_time,
+          resume_time: "",
+        });
+
+        await pauseCall.save();
+        return res.status(200).json({
+          status: true,
+          code: 200,
+          data: "Pause reasons updated..",
+          _id: pauseCall._id
+        });
+      }
+
+      else if (req.body.type === "Resume") {
+
+        const findReason = await PauseCall.findOne({ _id: _id });
+
+        if (!findReason) {
+          return res.status(404).json({
+            status: true,
+            code: 404,
+            data: "Incorrect _id entered",
+          })
+        }
+
+        await PauseCall.updateOne(
+          {
+            _id: _id
+          },
+          {
+            $set: {
+              resume_time: resume_time
+            }
+          }
+        )
+        return res.status(200).json({
+          status: true,
+          code: 200,
+          data: "Pause reasons updated..",
+          _id: _id
+        });
+      }
+
+
     } catch (error) {
       console.error('Error in Pause:', error);
       return res.status(500).json({
@@ -1098,7 +1133,7 @@ class AgentModel {
         let firstDayOfMonth;
         let lastDayOfMonth;
 
-        if (req.query.type === "MONTHLY") {
+        if (req.query.type === "MONTH") {
           firstDayOfMonth = new Date(
             currentDate.getFullYear(),
             currentDate.getMonth() - i,
@@ -1109,7 +1144,7 @@ class AgentModel {
             currentDate.getMonth() - i + 1,
             0
           );
-        } else if (req.query.type === "WEEKLY") {
+        } else if (req.query.type === "WEEK") {
           firstDayOfMonth = new Date(
             currentDate.getFullYear(),
             currentDate.getMonth(),
@@ -1198,7 +1233,7 @@ class AgentModel {
           });
         }
         const d = await callDetails.aggregate(pipeline);
-        if (req.query.type === "WEEKLY") {
+        if (req.query.type === "WEEK") {
           result.push({
             type: lastDayOfMonth.toLocaleString("default", {
               month: "short",

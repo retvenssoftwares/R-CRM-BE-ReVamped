@@ -1162,63 +1162,97 @@ class Reports {
 
   static async agentLoginTime(req, res) {
     try {
-      const agentData = await User.aggregate([
-        {
-          $match: {
-            role: "AGENT",
-          },
+      let pipeline = [{
+        $match: {
+          role: "AGENT"
         },
-        {
-          $lookup: {
-            from: "login_logout_times",
-            localField: "_id",
-            foreignField: "agent_id",
-            as: "loginLogoutData",
-          },
+      },
+      {
+        $lookup: {
+          from: "login_logout_times",
+          localField: "_id",
+          foreignField: "agent_id",
+          as: "loginLogoutData",
         },
-        {
-          $unwind: "$loginLogoutData",
+      },
+      {
+        $unwind: "$loginLogoutData",
+      },
+      {
+        $lookup: {
+          from: "calling_details",
+          localField: "_id",
+          foreignField: "agent_id",
+          as: "callingData",
         },
+      },
 
-        {
-          $lookup: {
-            from: "calling_details",
-            localField: "_id",
-            foreignField: "agent_id",
-            as: "callingData",
+      {
+        $project: {
+          _id: 1,
+          role: { $ifNull: ["$role", ""] },
+          name: { $ifNull: ["$name", ""] },
+          email: { $ifNull: ["$email", ""] },
+          designation: { $ifNull: ["$designation", ""] },
+          profile_pic: { $ifNull: ["$profile_pic", ""] },
+          log_in_time: {
+            $ifNull: [
+              { $arrayElemAt: ["$loginLogoutData.log_in_log_out_time.log_in_time", 0] },
+              "",
+            ],
           },
+          log_out_time: {
+            $ifNull: [
+              { $arrayElemAt: ["$loginLogoutData.log_in_log_out_time.log_out_time", 0] },
+              "",
+            ],
+          },
+          callingDataCount: { $size: "$callingData" },
         },
-        {
-          $project: {
-            _id: 1,
-            role: { $ifNull: ["$role", ""] },
-            name: { $ifNull: ["$name", ""] },
-            email: { $ifNull: ["$email", ""] },
-            status: { $ifNull: ["$status", ""] },
-            designation: { $ifNull: ["$designation", ""] },
-            department: { $ifNull: ["$department", ""] },
-            profile_pic: { $ifNull: ["$profile_pic", ""] },
-            log_in_time: {
-              $ifNull: [
-                { $arrayElemAt: ["$loginLogoutData.log_in_log_out_time.log_in_time", 0] },
-                "",
-              ],
-            },
-            log_out_time: {
-              $ifNull: [
-                { $arrayElemAt: ["$loginLogoutData.log_in_log_out_time.log_out_time", 0] },
-                "",
-              ],
-            },
-            callingDataCount: { $size: "$callingData" },
-          },
-        }
-      ]);
+      },
+
+
+      ];
+
+      if (req.query._id) {
+        pipeline.push({
+          $match: {
+            _id: new mongoose.Types.ObjectId(req.query._id),
+          }
+        })
+      }
+      const agentData = await User.aggregate(pipeline);
+
+      const mappedAgentData = agentData.map((agent) => {
+        const logInTime = agent.log_in_time;
+        const logOutTime = agent.log_out_time;
+
+        // Function to calculate the time difference and format as HH:MM:SS
+        const calculateTotalTime = () => {
+          if (logInTime && logOutTime) {
+            const diffMilliseconds = new Date(logOutTime) - new Date(logInTime);
+            const hours = Math.floor(diffMilliseconds / 3600000);
+            const minutes = Math.floor((diffMilliseconds % 3600000) / 60000);
+            const seconds = Math.floor((diffMilliseconds % 60000) / 1000);
+            return `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+          }
+          return "";
+        };
+
+        // Calculate total_time using the function
+        const total_time = calculateTotalTime();
+
+        return {
+          ...agent,
+          total_time,
+        };
+      });
+
 
       return res.status(200).json({
         status: true,
         code: 200,
-        data: agentData,
+        data: mappedAgentData,
       });
 
     } catch (error) {
@@ -1232,7 +1266,7 @@ class Reports {
 
   static async callDataAnalysis(req, res) {
     try {
-      const callingData = await callsDetails.find().select('agent_id call_date call_time dial_status guest_id end_time talktime hotel_destination').lean();
+      const callingData = await callsDetails.find().select('agent_id hang_up_cause call_date call_time dial_status guest_id end_time talktime hotel_destination').lean();
       const users = await User.find({}, '_id name').lean();
       // console.log('users: ', users);
       const mappedCallData = await Promise.all(callingData.map((call) => {
@@ -1247,7 +1281,8 @@ class Reports {
           end_stamp: call.call_date + " " + call.end_time || "",
           duration: call.talktime || "",
           call_status: call.dial_status || "",
-          agent_name: getAgentNames ? getAgentNames.name : ""
+          agent_name: getAgentNames ? getAgentNames.name : "",
+          hang_up_cause: call.hangup_cause || "",
         }
       }));
 
@@ -1338,6 +1373,103 @@ class Reports {
       })
     }
   }
+
+  static async callSummary(req, res) {
+    try {
+      const callingData = await callsDetails.find().select('agent_id hang_up_cause call_date call_time dial_status guest_id end_time talktime hotel_destination').lean();
+      const users = await User.find({}, '_id name').lean();
+      // console.log('users: ', users);
+      const mappedCallData = await Promise.all(callingData.map((call) => {
+        const getAgentNames = users.find((user) => user._id.toString() === call.agent_id.toString());
+        // console.log('getAgentNames: ', getAgentNames);
+        return {
+          ...call._doc,
+          agent_id: call.agent_id,
+          guest_id: call.guest_id || "",
+          hotel_destination: call.hotel_destination || "",
+          start_stamp: call.call_date + " " + call.call_time || "",
+          end_stamp: call.call_date + " " + call.end_time || "",
+          duration: call.talktime || "",
+          call_status: call.dial_status || "",
+          agent_name: getAgentNames ? getAgentNames.name : "",
+          hang_up_cause: call.hangup_cause || "",
+        }
+      }));
+
+      const callingData2 = await callsDetails.aggregate([
+        {
+          $match: {}
+        },
+
+        {
+          $lookup: {
+            from: "users",
+            localField: "agent_id",
+            foreignField: "_id",
+            as: "userData"
+          }
+        },
+
+        {
+          $lookup: {
+            from: "dispositions",
+            localField: "disposition",
+            foreignField: "_id",
+            as: "dispositionData"
+          }
+        },
+
+        {
+          $lookup: {
+            from: "guest_details",
+            localField: "guest_id",
+            foreignField: "_id",
+            as: "guestData"
+          }
+        },
+
+        {
+          $unwind: "$userData"
+        },
+
+        {
+          $unwind: "$guestData"
+        },
+        {
+          $unwind: "$dispositionData"
+        },
+
+        {
+          $project: {
+            call_date: { $ifNull: ["$call_date", ""] },
+            type: { $ifNull: ["$type", ""] },
+            agent_id: { $ifNull: ["$agent_id", ""] },
+            agent_name: { $ifNull: ["$userData.name", ""] },
+            guest_id: { $ifNull: ["$guest_id", ""] },
+            phone_number: { $ifNull: ["$guestData.guest_mobile_number", ""] },
+            call_disposition: { $ifNull: ["$dispositionData.name", ""] },
+            next_action_date: { $ifNull: ["$call_back_date_time", ""] }
+          }
+        }
+      ]);
+
+      return res.status(200).json({
+        status: true,
+        code: 200,
+        callingData: mappedCallData,
+        dispositionData: callingData2,
+      });
+
+    } catch (error) {
+      console.log(error);
+      return res.status(500).json({
+        status: false,
+        code: 500,
+        error: "Internal Server Error",
+      })
+    }
+  }
 }
+
 
 export default Reports;
