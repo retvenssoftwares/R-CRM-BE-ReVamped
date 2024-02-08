@@ -473,6 +473,7 @@ class AgentModel {
 
   static async TodayConversions(req, res, next) {
     try {
+      // console.log(req.authData._id)
       let condition = [
         {
           $match: {
@@ -483,6 +484,12 @@ class AgentModel {
               {
                 call_date: JSON.stringify(new Date()).split("T")[0].slice(1),
               },
+              // {
+              //   arrival_date: { $ne: "" },
+              // },
+              // {
+              //   departure_date: { $ne: "" },
+              // },
             ],
           },
         },
@@ -500,35 +507,69 @@ class AgentModel {
         {
           $addFields: {
             startDate: {
-              $dateFromString: {
-                dateString: "$arrival_date"
-              }
+              $cond: {
+                if: {
+                  $and: [
+                    { $ne: ["$arrival_date", ""] },
+                    { $ne: ["$arrival_date", null] },
+                  ],
+                },
+                then: {
+                  $dateFromString: {
+                    dateString: "$arrival_date",
+                  },
+                },
+                else: null,
+              },
             },
             endDate: {
-              $dateFromString: {
-                dateString: "$departure_date"
-              }
-            }
-          }
+              $cond: {
+                if: {
+                  $and: [
+                    { $ne: ["$departure_date", ""] },
+                    { $ne: ["$departure_date", null] },
+                  ],
+                },
+                then: {
+                  $dateFromString: {
+                    dateString: "$departure_date",
+                  },
+                },
+                else: null,
+              },
+            },
+          },
         },
+
         {
           $addFields: {
             noOfNights: {
-              $divide: [
-                {
-                  $subtract: ["$endDate", "$startDate"]
+              $cond: {
+                if: {
+                  $and: [
+                    { $ne: ["$startDate", null] },
+                    { $ne: ["$endDate", null] },
+                  ],
                 },
-                1000 * 60 * 60 * 24
-              ]
-            }
-          }
+                then: {
+                  $divide: [
+                    { $subtract: ["$endDate", "$startDate"] },
+                    1000 * 60 * 60 * 24,
+                  ],
+                },
+                else: 0,
+              },
+            },
+          },
         },
         {
           $project: {
             hotel_name: 1,
             guest_name: "$guest.guest_first_name",
             guest_last_name: "$guest.guest_last_name",
-            noOfNights: 1
+            noOfNights: 1,
+            // startDate: 1,
+            // endDate: 1,
           },
         },
         {
@@ -556,6 +597,7 @@ class AgentModel {
         data: findCall,
       });
     } catch (error) {
+      console.log(error)
       return res.status(500).json({
         status: false,
         code: 500,
@@ -608,7 +650,7 @@ class AgentModel {
             hotel_name: 1,
             guest_first_name: "$guest.guest_first_name",
             guest_last_name: "$guest.guest_last_name",
-            disposition_name : "$disposition_info.name",
+            disposition_name: "$disposition_info.name",
             arrival_date: 1,
           },
         },
@@ -618,14 +660,14 @@ class AgentModel {
         let dispositionId = req.query.disposition;
         condition.unshift({
           $match: {
-            
+
             disposition: new mongoose.Types.ObjectId(dispositionId),
           },
         });
       }
 
       let findCall = await callDetails.aggregate(condition);
-  
+
 
       return res.status(200).json({
         status: true,
@@ -1008,7 +1050,7 @@ class AgentModel {
   static async hotelNameList(req, res, next) {
     try {
       const _id = req.authData._id
-      const all_hotel = await hotel.find({ display_status: "1"}).lean()
+      const all_hotel = await hotel.find({ display_status: "1" }).lean()
       const hotels = [];
 
       if (all_hotel && req.authData.role === "AGENT") {
@@ -1023,8 +1065,8 @@ class AgentModel {
             }
           })
         );
-      }else if(req.authData.role === "ADMIN"){
-        const all_hotel = await hotel.find({ display_status: "1", addedBy : new mongoose.Types.ObjectId(_id) }).lean()
+      } else if (req.authData.role === "ADMIN") {
+        const all_hotel = await hotel.find({ display_status: "1", addedBy: new mongoose.Types.ObjectId(_id) }).lean()
         hotels.push(all_hotel)
         return res.status(200).json({
           success: true,
@@ -1032,7 +1074,7 @@ class AgentModel {
           data: [].concat(...hotels),
         });
       }
- 
+
       return res.status(200).json({
         success: true,
         code: 200,
@@ -1423,6 +1465,44 @@ class AgentModel {
       });
     }
 
+  }
+
+  static async getFollowUpDispositions(req, res,) {
+    try {
+
+      const getFollowUps = await Disposition.aggregate([
+        {
+          $match: { name: { $regex: /Follow up/i } }
+        },
+        {
+          $group: {
+            _id: '$name',
+            uniqueIds: { $addToSet: '$_id' }
+          }
+        },
+        {
+          $project: {
+            _id: { $arrayElemAt: ['$uniqueIds', 0] },
+            name: '$_id'
+          }
+        }
+      ]);
+
+      return res.status(200).json({
+        success: true,
+        code: 200,
+        message: "Disposition List",
+        data: getFollowUps
+      })
+
+    } catch (error) {
+      console.log(error);
+      return res.status(500).json({
+        success: false,
+        code: 500,
+        message: "Internal Server Error"
+      });
+    }
   }
 
 

@@ -1675,7 +1675,7 @@ class AdminModel {
     let findCalls;
 
     if (req.authData.role === "ADMIN") {
-      const adminId = req.authData._id; // Assuming admin's _id is available in req.authData
+      const adminId = req.authData._id; 
       const { from, to } = req.query;
       let pipeline = [
         {
@@ -1745,6 +1745,13 @@ class AdminModel {
           error: err.message,
         });
       }
+    }else{
+      return res.status(400).json({
+        success: false,
+          code: 400,
+          message: "You are not authorized to access this data",
+        
+      })
     }
   }
 
