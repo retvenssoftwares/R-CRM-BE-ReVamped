@@ -1162,57 +1162,91 @@ class Reports {
 
   static async agentLoginTime(req, res) {
     try {
-      let pipeline = [{
-        $match: {
-          role: "AGENT"
-        },
-      },
-      {
-        $lookup: {
-          from: "login_logout_times",
-          localField: "_id",
-          foreignField: "agent_id",
-          as: "loginLogoutData",
-        },
-      },
-      {
-        $unwind: "$loginLogoutData",
-      },
-      {
-        $lookup: {
-          from: "calling_details",
-          localField: "_id",
-          foreignField: "agent_id",
-          as: "callingData",
-        },
-      },
 
-      {
-        $project: {
-          _id: 1,
-          role: { $ifNull: ["$role", ""] },
-          name: { $ifNull: ["$name", ""] },
-          email: { $ifNull: ["$email", ""] },
-          designation: { $ifNull: ["$designation", ""] },
-          profile_pic: { $ifNull: ["$profile_pic", ""] },
-          log_in_time: {
-            $ifNull: [
-              { $arrayElemAt: ["$loginLogoutData.log_in_log_out_time.log_in_time", 0] },
-              "",
-            ],
+
+      let today = new Date();
+      let formattedDate = `${today.getMonth() + 1}/${today.getDate()}/${today.getFullYear()}`;
+      // console.log('formattedDate: ', formattedDate, typeof formattedDate);
+
+      let pipeline = [
+        {
+          $match: {
+            role: "AGENT",
           },
-          log_out_time: {
-            $ifNull: [
-              { $arrayElemAt: ["$loginLogoutData.log_in_log_out_time.log_out_time", 0] },
-              "",
-            ],
-          },
-          callingDataCount: { $size: "$callingData" },
         },
-      },
-
-
+        {
+          $lookup: {
+            from: "login_logout_times",
+            localField: "_id",
+            foreignField: "agent_id",
+            as: "loginLogoutData",
+          },
+        },
+        {
+          $unwind: "$loginLogoutData",
+        },
+        {
+          $lookup: {
+            from: "calling_details",
+            localField: "_id",
+            foreignField: "agent_id",
+            as: "callingData",
+          },
+        },
+        {
+          $lookup: {
+            from: "pause_calls",
+            let: { agentId: "$_id", todayDate: formattedDate },
+            pipeline: [
+              {
+                $match: {
+                  $expr: {
+                    $and: [
+                      { $eq: ["$agent_id", "$$agentId"] },
+                      {
+                        $regexMatch: {
+                          input: "$pause_time",
+                          regex: new RegExp(`^${formattedDate}`),
+                        },
+                      },
+                    ],
+                  },
+                },
+              },
+            ],
+            as: "pauseCallData",
+          },
+        },
+        {
+          $project: {
+            _id: 1,
+            role: { $ifNull: ["$role", ""] },
+            name: { $ifNull: ["$name", ""] },
+            email: { $ifNull: ["$email", ""] },
+            designation: { $ifNull: ["$designation", ""] },
+            log_in_time: {
+              $ifNull: [
+                { $arrayElemAt: ["$loginLogoutData.log_in_log_out_time.log_in_time", 0] },
+                "",
+              ],
+            },
+            log_out_time: {
+              $ifNull: [
+                { $arrayElemAt: ["$loginLogoutData.log_in_log_out_time.log_out_time", 0] },
+                "",
+              ],
+            },
+            callingDataCount: { $size: "$callingData" },
+            pauseCallData: 1,
+          },
+        },
+        {
+          $sort: {
+            _id: -1,
+          },
+        },
       ];
+
 
       if (req.query._id) {
         pipeline.push({
@@ -1239,15 +1273,39 @@ class Reports {
           return "";
         };
 
-        // Calculate total_time using the function
+        // Function to calculate break time
+        const calculateBreakTime = () => {
+          if (agent.pauseCallData) {
+            const breakMilliseconds = agent.pauseCallData.reduce((acc, pause) => {
+              if (pause.resume_time) {
+                return acc + (new Date(pause.resume_time) - new Date(pause.pause_time));
+              }
+              return acc;
+            }, 0);
+
+            const breakHours = Math.floor(breakMilliseconds / 3600000);
+            const breakMinutes = Math.floor((breakMilliseconds % 3600000) / 60000);
+            const breakSeconds = Math.floor((breakMilliseconds % 60000) / 1000);
+
+            return `${breakHours}:${String(breakMinutes).padStart(2, '0')}:${String(breakSeconds).padStart(2, '0')}`;
+          }
+
+          return "00:00:00";
+        };
+
+        // Calculate total_time and break_time using the functions
         const total_time = calculateTotalTime();
+        const break_time = calculateBreakTime();
+
+        // Exclude pauseCallData from the response
+        const { pauseCallData, ...agentWithoutPauseData } = agent;
 
         return {
-          ...agent,
+          ...agentWithoutPauseData,
           total_time,
+          break_time,
         };
       });
-
 
       return res.status(200).json({
         status: true,
@@ -1272,24 +1330,26 @@ class Reports {
       const mappedCallData = await Promise.all(callingData.map((call) => {
         const getAgentNames = users.find((user) => user._id.toString() === call.agent_id.toString());
         // console.log('getAgentNames: ', getAgentNames);
+        const startStamp = call.call_date && call.call_time ? `${call.call_date} ${call.call_time}` : "";
+        const endStamp = call.call_date && call.end_time ? `${call.call_date} ${call.end_time}` : "";
+
         return {
           ...call._doc,
           agent_id: call.agent_id,
-          guest_id: call.guest_id || "",
-          hotel_destination: call.hotel_destination || "",
-          start_stamp: call.call_date + " " + call.call_time || "",
-          end_stamp: call.call_date + " " + call.end_time || "",
-          duration: call.talktime || "",
-          call_status: call.dial_status || "",
-          agent_name: getAgentNames ? getAgentNames.name : "",
-          hang_up_cause: call.hangup_cause || "",
-        }
+          guest_id: call.guest_id ?? "",
+          hotel_destination: call.hotel_destination ?? "",
+          start_stamp: startStamp,
+          end_stamp: endStamp,
+          duration: call.talktime ?? "",
+          call_status: call.dial_status,
+          agent_name: getAgentNames?.name ?? ""
+        };
       }));
 
       return res.status(200).json({
         status: true,
         code: 200,
-        data: mappedCallData
+        data: mappedCallData.reverse()
       })
     } catch (error) {
       console.log(error);
@@ -1354,7 +1414,12 @@ class Reports {
             guest_id: { $ifNull: ["$guest_id", ""] },
             phone_number: { $ifNull: ["$guestData.guest_mobile_number", ""] },
             call_disposition: { $ifNull: ["$dispositionData.name", ""] },
-            next_action_date: { $ifNull: ["$call_back_date_time", ""] }
+            next_action_date: { $ifNull: ["$call_back_date_time", ""] },
+          }
+        },
+        {
+          $sort: {
+            _id: -1
           }
         }
       ]);
@@ -1376,25 +1441,25 @@ class Reports {
 
   static async callSummary(req, res) {
     try {
-      const callingData = await callsDetails.find().select('agent_id hang_up_cause call_date call_time dial_status guest_id end_time talktime hotel_destination').lean();
-      const users = await User.find({}, '_id name').lean();
-      // console.log('users: ', users);
-      const mappedCallData = await Promise.all(callingData.map((call) => {
-        const getAgentNames = users.find((user) => user._id.toString() === call.agent_id.toString());
-        // console.log('getAgentNames: ', getAgentNames);
-        return {
-          ...call._doc,
-          agent_id: call.agent_id,
-          guest_id: call.guest_id || "",
-          hotel_destination: call.hotel_destination || "",
-          start_stamp: call.call_date + " " + call.call_time || "",
-          end_stamp: call.call_date + " " + call.end_time || "",
-          duration: call.talktime || "",
-          call_status: call.dial_status || "",
-          agent_name: getAgentNames ? getAgentNames.name : "",
-          hang_up_cause: call.hangup_cause || "",
-        }
-      }));
+      // const callingData = await callsDetails.find().select('agent_id hang_up_cause call_date call_time dial_status guest_id end_time talktime hotel_destination').lean();
+      // const users = await User.find({}, '_id name').lean();
+      // // console.log('users: ', users);
+      // const mappedCallData = await Promise.all(callingData.map((call) => {
+      //   const getAgentNames = users.find((user) => user._id.toString() === call.agent_id.toString());
+      //   // console.log('getAgentNames: ', getAgentNames);
+      //   return {
+      //     ...call._doc,
+      //     agent_id: call.agent_id,
+      //     guest_id: call.guest_id || "",
+      //     hotel_destination: call.hotel_destination || "",
+      //     start_stamp: call.call_date + " " + call.call_time || "",
+      //     end_stamp: call.call_date + " " + call.end_time || "",
+      //     duration: call.talktime || "",
+      //     call_status: call.dial_status || "",
+      //     agent_name: getAgentNames ? getAgentNames.name : "",
+      //     hang_up_cause: call.hangup_cause || "",
+      //   }
+      // }));
 
       const callingData2 = await callsDetails.aggregate([
         {
@@ -1448,7 +1513,18 @@ class Reports {
             guest_id: { $ifNull: ["$guest_id", ""] },
             phone_number: { $ifNull: ["$guestData.guest_mobile_number", ""] },
             call_disposition: { $ifNull: ["$dispositionData.name", ""] },
-            next_action_date: { $ifNull: ["$call_back_date_time", ""] }
+            next_action_date: { $ifNull: ["$call_back_date_time", ""] },
+            hotel_destination: { $ifNull: ["$hotel_destination", ""] },
+            hang_up_cause: { $ifNull: ["$hang_up_cause", ""] },
+            talktime: { $ifNull: ["$talktime", ""] },
+            dial_status: { $ifNull: ["$dial_status", ""] },
+            call_time: { $ifNull: ["$call_time", ""] },
+            end_time: { $ifNull: ["$end_time", ""] },
+          }
+        },
+        {
+          $sort: {
+            _id: -1
           }
         }
       ]);
@@ -1456,8 +1532,8 @@ class Reports {
       return res.status(200).json({
         status: true,
         code: 200,
-        callingData: mappedCallData,
-        dispositionData: callingData2,
+        // callingData: mappedCallData,
+        data: callingData2,
       });
 
     } catch (error) {

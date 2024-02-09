@@ -1396,8 +1396,6 @@ class AgentModel {
 
   }
 
-
-
   // static async Leads(req, res, next) {
   //   let pipeline = [];
 
