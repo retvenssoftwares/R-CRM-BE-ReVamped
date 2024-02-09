@@ -299,8 +299,8 @@ class AgentModel {
       let reservation_call = await callDetails.countDocuments(
         {
           department: "RESERVATION",
-        },
-        { agent_id: new mongoose.Types.ObjectId(req.authData._id) }
+          agent_id: new mongoose.Types.ObjectId(req.authData._id)
+        }
       );
       let reservation_incoming_call = await callDetails.countDocuments({
         $and: [
@@ -660,7 +660,7 @@ class AgentModel {
           },
         },
       ];
-  
+
       if (req.query.hotel_name) {
         let hotelName = req.query.hotel_name.replaceAll("_", " ");
         condition.unshift({
@@ -669,9 +669,9 @@ class AgentModel {
           },
         });
       }
-  
+
       let findCall = await callDetails.aggregate(condition);
-  
+
       return res.status(200).json({
         status: true,
         code: 200,
@@ -686,7 +686,7 @@ class AgentModel {
       });
     }
   }
-  
+
 
   static async PendingFollowUp(req, res, next) {
     try {
@@ -727,7 +727,7 @@ class AgentModel {
         {
           $unwind: "$disposition_info",
         },
-          {
+        {
           $match: {
             "disposition_info.name": {
               $nin: ["Spam", "Cancellation"]
@@ -739,7 +739,7 @@ class AgentModel {
             hotel_name: 1,
             guest_first_name: "$guest.guest_first_name",
             guest_last_name: "$guest.guest_last_name",
-            disposition_name : "$disposition_info.name",
+            disposition_name: "$disposition_info.name",
             arrival_date: 1,
           },
         },
@@ -749,14 +749,14 @@ class AgentModel {
         let dispositionId = req.query.disposition;
         condition.unshift({
           $match: {
-            
+
             disposition: new mongoose.Types.ObjectId(dispositionId),
           },
         });
       }
 
       let findCall = await callDetails.aggregate(condition);
-  
+
 
       return res.status(200).json({
         status: true,
@@ -1007,10 +1007,11 @@ class AgentModel {
   static async hotelDestinationList(req, res, next) {
     try {
       let condition = [
-        { $match: {
-          hotel_destination: { $exists: true, $ne: "" }
-        } 
-      },
+        {
+          $match: {
+            hotel_destination: { $exists: true, $ne: "" }
+          }
+        },
         {
           $project: {
             hotel_destination: 1,
@@ -1264,7 +1265,7 @@ class AgentModel {
               $and: [
                 {
                   call_date: {
-                    $gt: JSON.stringify(firstDayOfMonth).split("T")[0].slice(1),
+                    $gte: JSON.stringify(firstDayOfMonth).split("T")[0].slice(1),
                   },
                 },
                 {
@@ -1278,7 +1279,7 @@ class AgentModel {
           {
             $group: {
               _id: null,
-              count: { $sum: 1 },
+              count: { $sum: 1 }, 
             },
           },
         ];
@@ -1299,6 +1300,7 @@ class AgentModel {
           });
         }
         const d = await callDetails.aggregate(pipeline);
+        console.log('d: ', d);
         if (req.query.type === "WEEKLY") {
           result.push({
             type: lastDayOfMonth.toLocaleString("default", {
