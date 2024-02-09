@@ -1104,25 +1104,25 @@ class AdminModel {
     }
   }
 
-  static async getDisposition(req, res, next) {
-    let findDisposition = await dispositions.find({});
+  // static async getDisposition(req, res, next) {
+  //   let findDisposition = await dispositions.find({});
 
-    if (!findDisposition) {
-      return res.status(401).json({
-        status: false,
-        code: 401,
-        message: "Data not found",
-        data: result.reverse(),
-      });
-    }
+  //   if (!findDisposition) {
+  //     return res.status(401).json({
+  //       status: false,
+  //       code: 401,
+  //       message: "Data not found",
+  //       data: result.reverse(),
+  //     });
+  //   }
 
-    return res.status(200).json({
-      status: true,
-      code: 200,
-      message: "Data Fetched successfully",
-      data: findDisposition,
-    });
-  }
+  //   return res.status(200).json({
+  //     status: true,
+  //     code: 200,
+  //     message: "Data Fetched successfully",
+  //     data: findDisposition,
+  //   });
+  // }
 
   static async getDisposition1(req, res, next) {
     // let findDisposition = await dispositions.find({});
@@ -2042,13 +2042,22 @@ class AdminModel {
       if (all_disposition  &&  req.authData.role === "AGENT") {
         await Promise.all(
           all_disposition.map(async (item) => {
-         
-            const exist = await User.findOne({
-              _id: new mongoose.Types.ObjectId(_id),
-              created_by: new mongoose.Types.ObjectId(item.addedBy)
-            });
-            if (exist) {
-              disposition.push(item);
+            
+            try {
+              const userId = new mongoose.Types.ObjectId(_id);
+              const addedById = new mongoose.Types.ObjectId(item.addedBy);
+        
+              const exist = await User.findOne({
+                _id: userId,
+                created_by: addedById
+              });
+        
+              if (exist) {
+                disposition.push(item);
+              }
+            } catch (error) {
+              // console.error("Error creating ObjectId:", error);
+              // Handle the error or log it accordingly
             }
           })
         );
@@ -2061,7 +2070,6 @@ class AdminModel {
           data: [].concat(...disposition),
         });
       }
-
  
       return res.status(200).json({
         success: true,
@@ -2070,6 +2078,7 @@ class AdminModel {
       });
 
     } catch (err) {
+      console.log(err)
       return res.status(500).json({
         success: false,
         code: 500,
