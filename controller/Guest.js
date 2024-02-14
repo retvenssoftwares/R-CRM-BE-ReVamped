@@ -162,6 +162,17 @@ class GuestDeatils {
                 },
                 {
                     $lookup: {
+                        from: "hotels",
+                        localField: "calls.hotel_name",
+                        foreignField: "_id",
+                        as: "hotel_details"
+                    }
+                },
+                {
+                    $unwind: "$hotel_details"
+                },
+                {
+                    $lookup: {
                         from: "dispositions",
                         localField: "calls.disposition",
                         foreignField: "_id",
@@ -177,7 +188,7 @@ class GuestDeatils {
                     }
                 },
                 {
-                    $replaceRoot: { newRoot: {$mergeObjects: [{agentName: "$name"},"$guests"]} }
+                    $replaceRoot: { newRoot: { $mergeObjects: [{ agentName: "$name", dispositionName: "$dispositions.name", hotelName: "$hotel_details.hotel_name" }, "$guests"] } }
                 },
             ];
             try {
@@ -239,6 +250,17 @@ class GuestDeatils {
                 },
                 {
                     $lookup: {
+                        from: "hotels",
+                        localField: "calls.hotel_name",
+                        foreignField: "_id",
+                        as: "hotel_details"
+                    }
+                },
+                {
+                    $unwind: "$hotel_details"
+                },
+                {
+                    $lookup: {
                         from: "dispositions",
                         localField: "calls.disposition",
                         foreignField: "_id",
@@ -254,7 +276,7 @@ class GuestDeatils {
                     }
                 },
                 {
-                    $replaceRoot: { newRoot: {$mergeObjects: [{agentName: "$name"},"$guests"]} }
+                    $replaceRoot: { newRoot: { $mergeObjects: [{ agentName: "$name", dispositionName: "$dispositions.name", hotelName: "$hotel_details.hotel_name" }, "$guests"] } }
                 },
             ];
 

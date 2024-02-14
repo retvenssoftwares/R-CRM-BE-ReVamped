@@ -1765,6 +1765,28 @@ class AdminModel {
           $unwind: "$calls",
         },
         {
+          $lookup:{
+            from:"hotels",
+            localField:"calls.hotel_name",
+            foreignField:"_id",
+            as:"hotel_details"
+          }
+        },
+        {
+          $unwind:"$hotel_details"
+        },
+        {
+          $lookup:{
+            from:"dispositions",
+            localField:"calls.disposition",
+            foreignField:"_id",
+            as:"dispositionDetails"
+          }
+        },
+        {
+          $unwind:"$dispositionDetails"
+        },
+        {
           $sort: { "calls.call_date": -1 },
         },
         {
@@ -1773,6 +1795,8 @@ class AdminModel {
             calls: { $first: "$calls" },
             guest: { $first: "$guests" },
             agentName:{ $first: "$agentName" },
+            hotelName:{ $first: "$hotel_details.hotel_name" },
+            dispositionName:{ $first: "$dispositionDetails.name" },
             // Add other fields you want to include in the grouping
           },
         },
