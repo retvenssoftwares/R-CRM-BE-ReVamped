@@ -1588,7 +1588,7 @@ class AdminModel {
             caller_id: "$guest.guest_mobile_number",
             location: "$hotel_destination",
             agent_name: "$agent.name",
-            disposition: 1,
+            dispositionName: "$disposition.name",
             type: 1,
             agent_id: "$agent._id",
             last_support_by: 1,
