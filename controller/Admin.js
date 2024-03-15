@@ -10,13 +10,15 @@ import ErrorHandler from "../utils/errorHandler.js";
 import callDetail from "../model/callDetails.js";
 import login_logout from "../model/LoginAndLogOut.js";
 import CallDetail from "../model/callDetails.js";
-import mongoose from "mongoose";
+import mongoose, { Mongoose } from "mongoose";
 import dispositions from "../model/Disposition.js";
 import { formatTime } from "../utils/formattime.js";
 import JWT from "jsonwebtoken";
 import departments from "../model/department.js";
 import designations from "../model/designation.js";
 import hotel from "../model/hotels.js";
+import Guest from '../model/Guest.js'
+import Disposition from "../model/Disposition.js";
 dotenv.config({ path: "./.env" });
 
 let BASE_URL = process.env.BASE_URL;
@@ -70,12 +72,12 @@ class AdminModel {
         const formattedDate = `${log_in_time.getFullYear()}-${(log_in_time.getMonth() + 1)
           .toString()
           .padStart(2, '0')}-${log_in_time.getDate().toString().padStart(2, '0')} ${log_in_time
-          .getHours()
-          .toString()
-          .padStart(2, '0')}:${log_in_time.getMinutes().toString().padStart(2, '0')}:${log_in_time
-          .getSeconds()
-          .toString()
-          .padStart(2, '0')}`;
+            .getHours()
+            .toString()
+            .padStart(2, '0')}:${log_in_time.getMinutes().toString().padStart(2, '0')}:${log_in_time
+              .getSeconds()
+              .toString()
+              .padStart(2, '0')}`;
 
         await login_logout.updateOne(
           { agent_id: findUser._id },
@@ -1143,7 +1145,7 @@ class AdminModel {
     let findDisposition = await dispositions.find({
       "name": { $nin: ["Spam", "Cancellation"] }
     });
-    
+
 
     if (!findDisposition) {
       return res.status(401).json({
@@ -1494,15 +1496,15 @@ class AdminModel {
           },
         },
         {
-          $lookup:{
-            from:"hotels",
-            localField:"hotel_name",
-            foreignField:"_id",
-            as:"hotel_details"
+          $lookup: {
+            from: "hotels",
+            localField: "hotel_name",
+            foreignField: "_id",
+            as: "hotel_details"
           }
         },
         {
-          $unwind:"$hotel_details"
+          $unwind: "$hotel_details"
         },
         {
           $lookup: {
@@ -1717,7 +1719,7 @@ class AdminModel {
     let findCalls;
 
     if (req.authData.role === "ADMIN") {
-      const adminId = req.authData._id; 
+      const adminId = req.authData._id;
       const { from, to } = req.query;
       let pipeline = [
         {
@@ -1726,8 +1728,8 @@ class AdminModel {
           },
         },
         {
-          $addFields:{
-            agentName:"$name"
+          $addFields: {
+            agentName: "$name"
           }
         },
         {
@@ -1765,26 +1767,26 @@ class AdminModel {
           $unwind: "$calls",
         },
         {
-          $lookup:{
-            from:"hotels",
-            localField:"calls.hotel_name",
-            foreignField:"_id",
-            as:"hotel_details"
+          $lookup: {
+            from: "hotels",
+            localField: "calls.hotel_name",
+            foreignField: "_id",
+            as: "hotel_details"
           }
         },
         {
-          $unwind:"$hotel_details"
+          $unwind: "$hotel_details"
         },
         {
-          $lookup:{
-            from:"dispositions",
-            localField:"calls.disposition",
-            foreignField:"_id",
-            as:"dispositionDetails"
+          $lookup: {
+            from: "dispositions",
+            localField: "calls.disposition",
+            foreignField: "_id",
+            as: "dispositionDetails"
           }
         },
         {
-          $unwind:"$dispositionDetails"
+          $unwind: "$dispositionDetails"
         },
         {
           $sort: { "calls.call_date": -1 },
@@ -1794,9 +1796,9 @@ class AdminModel {
             _id: "$calls.guest_id",
             calls: { $first: "$calls" },
             guest: { $first: "$guests" },
-            agentName:{ $first: "$agentName" },
-            hotelName:{ $first: "$hotel_details.hotel_name" },
-            dispositionName:{ $first: "$dispositionDetails.name" },
+            agentName: { $first: "$agentName" },
+            hotelName: { $first: "$hotel_details.hotel_name" },
+            dispositionName: { $first: "$dispositionDetails.name" },
             // Add other fields you want to include in the grouping
           },
         },
@@ -1817,12 +1819,12 @@ class AdminModel {
           error: err.message,
         });
       }
-    }else{
+    } else {
       return res.status(400).json({
         success: false,
-          code: 400,
-          message: "You are not authorized to access this data",
-        
+        code: 400,
+        message: "You are not authorized to access this data",
+
       })
     }
   }
@@ -2324,6 +2326,138 @@ class AdminModel {
         code: 500,
         error: error.message,
       });
+    }
+  }
+
+  static async addData(req, res, next) {
+    try {
+      // const _id = req.authData._id;
+
+      if (!req.authData.role === "ADMIN") {
+        return res.status(404).json({
+          success: false,
+          code: 404,
+          message: "you are not allowed to access this",
+        })
+      }
+
+      const data = req.body.json;
+      data.map(async (item) => {
+        const agent = await User.findOne({ name: item?.agentName });
+        const agentId = new mongoose.Types.ObjectId(agent?._id);
+        const hotels = await hotel.findOne({ hotel_name: item?.hotelName });
+        const hotelId = new mongoose.Types.ObjectId(hotels?._id);
+        const lastRecord = await callDetail.findOne({ guest_id: agent?._id }).sort({ _id: -1 });
+        const disposition = await Disposition.findOne({ name: item?.callDisposition })
+
+        const GuestData = await Guest.findOne({ guest_mobile_number: item?.phoneNumber });
+
+        if (GuestData) {
+          const newRecord = new callDetail({
+            guest_id: new mongoose.Types.ObjectId(GuestData?._id),
+            agent_id: agentId || "",
+            admin_id: new mongoose.Types.ObjectId(agent?.created_by),
+            guest_mobile_number: item?.phoneNumber,
+            hotel_name: hotelId || "",
+            disposition: new mongoose.Types.ObjectId(disposition?._id),
+            caller_type: item?.callerType,
+            purpose_of_travel: item?.purposeOfTravel,
+            arrival_date: item?.arrivalDate,
+            departure_date: item?.departureDate,
+            call_back_date_time: item?.followUpDateTime,
+            remark: item?.remark,
+            call_date: item?.RecordDate?.split(' ')[0],
+            call_time: item?.RecordDate?.split(' ')[1],
+            last_called: lastRecord?.lastCall,
+            last_support_by: lastRecord?.lastSupport,
+            hotel_destination: hotel?.hotel_city,
+
+            start_time: item?.startTime,
+            time_to_answer: item?.timeToAnswer,
+            talktime: item?.talkTime,
+            type: item?.Type,
+            dial_status: item?.dialStatus,
+            hang_up_by: item?.hangUpBy,
+            guest_status: item?.guest_status,
+            special_occassion: item?.special_occassion,
+            reservationId: item?.reservationId,
+            hang_up_cause: item?.hangUpCause,
+            department: item?.department,
+          })
+          await newRecord.save();
+        } else {
+          const newGuest = new Guest({
+            agent_id: agentId,
+            salutation: item?.salutation,
+            guest_title: item?.guest_title,
+            guest_mobile_number: item?.phoneNumber,
+            guest_first_name: item?.firstName,
+            guest_last_name: item?.lastName,
+            guest_email: item?.guestEmail,
+            guest_gender: item?.guestGender,
+            guest_special_request: item?.guestSpecialRequest,
+            guest_address_1: item?.address1,
+            guest_address_2: item?.address2,
+            city: item?.city,
+            state: item?.state,
+            country: item?.country,
+            zip_code: item?.zip_code,
+            guest_fax: item?.guest_fax,
+            guest_device: item?.guest_device,
+            alternate_contact: item?.alternate_contact,
+            date: item?.date,
+          })
+          const savedGuest = await newGuest.save();
+          const PhoneNumber = savedGuest?.guest_mobile_number
+          const GuestData1 = await Guest.findOne({ guest_mobile_number: PhoneNumber });
+
+          const newRecord = new callDetail({
+            guest_id: new mongoose.Types.ObjectId(GuestData1?._id),
+            agent_id: agentId || "",
+            admin_id: new mongoose.Types.ObjectId(agent?.created_by),
+            guest_mobile_number: item?.phoneNumber,
+            hotel_name: hotelId || "",
+            disposition: new mongoose.Types.ObjectId(disposition?._id),
+            caller_type: item?.callerType,
+            purpose_of_travel: item?.purposeOfTravel,
+            arrival_date: item?.arrivalDate,
+            departure_date: item?.departureDate,
+            call_back_date_time: item?.followUpDateTime,
+            remark: item?.remark,
+            call_date: item?.RecordDate?.split(' ')[0],
+            call_time: item?.RecordDate?.split(' ')[1],
+            last_called: lastRecord?.lastCall,
+            last_support_by: lastRecord?.lastSupport,
+            hotel_destination: hotel?.hotel_city,
+
+            start_time: item?.startTime,
+            time_to_answer: item?.timeToAnswer,
+            talktime: item?.talkTime,
+            type: item?.Type,
+            dial_status: item?.dialStatus,
+            hang_up_by: item?.hangUpBy,
+            guest_status: item?.guest_status,
+            special_occassion: item?.special_occassion,
+            reservationId: item?.reservationId,
+            hang_up_cause: item?.hangUpCause,
+            department: item?.department,
+          })
+          await newRecord.save();
+        }
+      })
+      return res.status(200).json({
+        success: true,
+        code: 200,
+        message: "data added successfully",
+      })
+
+    } catch (error) {
+      console.log(error);
+      return res.status(500).json({
+        success: false,
+        code: 500,
+        error: error.message,
+      })
     }
   }
 }
